@@ -7,6 +7,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { TimelineSegment, TrackPoint } from "@/lib/timeline/types";
 import { boundsOf } from "@/lib/timeline/geo";
 import { isTrip, isVisit } from "@/lib/timeline/stats";
+import { ReplayFrame } from "@/lib/timeline/replay";
 import { useTheme } from "@/components/ThemeProvider";
 import { loadTintedStyle } from "@/lib/mapTint";
 
@@ -20,6 +21,7 @@ maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 interface MapViewProps {
   segments: TimelineSegment[];
   rawTrack?: TrackPoint[];
+  replayFrame?: ReplayFrame | null;
 }
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
@@ -30,12 +32,13 @@ interface OverlayColors {
   isLight: boolean;
 }
 
-export default function MapView({ segments, rawTrack = [] }: MapViewProps) {
+export default function MapView({ segments, rawTrack = [], replayFrame = null }: MapViewProps) {
   const { themeId, isLight, themes } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const segmentsRef = useRef(segments);
   const rawTrackRef = useRef(rawTrack);
+  const replayFrameRef = useRef(replayFrame);
   const colorsRef = useRef<OverlayColors>(themeColors(themeId, isLight, themes));
   const hasFitRef = useRef(false);
   const styleGenerationRef = useRef(0);
@@ -44,6 +47,10 @@ export default function MapView({ segments, rawTrack = [] }: MapViewProps) {
     segmentsRef.current = segments;
     rawTrackRef.current = rawTrack;
   }, [segments, rawTrack]);
+
+  useEffect(() => {
+    replayFrameRef.current = replayFrame;
+  }, [replayFrame]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -68,6 +75,7 @@ export default function MapView({ segments, rawTrack = [] }: MapViewProps) {
         setupOverlayLayers(map, colorsRef.current);
         renderData(map, segmentsRef.current, rawTrackRef.current, { fit: !hasFitRef.current });
         hasFitRef.current = true;
+        renderReplayFrame(map, replayFrameRef.current, { pan: false });
       });
 
       mapRef.current = map;
@@ -98,6 +106,12 @@ export default function MapView({ segments, rawTrack = [] }: MapViewProps) {
       map.setStyle(style);
     });
   }, [themeId, isLight, themes]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    renderReplayFrame(map, replayFrame, { pan: true });
+  }, [replayFrame]);
 
   return (
     <div ref={containerRef} className={`h-full min-h-100 w-full ${isLight ? "" : "map-dark-tiles"}`} />
@@ -152,6 +166,88 @@ function setupOverlayLayers(map: MapLibreMap, colors: OverlayColors) {
         "circle-stroke-color": colors.isLight ? "#ffffff" : "#0b0b12",
       },
     });
+  }
+
+  if (!map.getSource("replay-trail")) {
+    map.addSource("replay-trail", { type: "geojson", data: EMPTY_FC });
+    map.addLayer({
+      id: "replay-trail-line",
+      type: "line",
+      source: "replay-trail",
+      paint: {
+        "line-color": colors.accent2,
+        "line-width": 4,
+        "line-opacity": 0.85,
+      },
+    });
+  }
+
+  if (!map.getSource("replay-marker")) {
+    map.addSource("replay-marker", { type: "geojson", data: EMPTY_FC });
+    map.addLayer({
+      id: "replay-marker-halo",
+      type: "circle",
+      source: "replay-marker",
+      paint: {
+        "circle-radius": 12,
+        "circle-color": colors.accent2,
+        "circle-opacity": 0.25,
+      },
+    });
+    map.addLayer({
+      id: "replay-marker-dot",
+      type: "circle",
+      source: "replay-marker",
+      paint: {
+        "circle-radius": 6,
+        "circle-color": colors.accent2,
+        "circle-stroke-width": 2,
+        "circle-stroke-color": colors.isLight ? "#ffffff" : "#0b0b12",
+      },
+    });
+  }
+}
+
+function renderReplayFrame(map: MapLibreMap, frame: ReplayFrame | null | undefined, options: { pan: boolean }) {
+  const trailSource = map.getSource("replay-trail") as GeoJSONSource | undefined;
+  const markerSource = map.getSource("replay-marker") as GeoJSONSource | undefined;
+
+  if (!frame) {
+    trailSource?.setData(EMPTY_FC);
+    markerSource?.setData(EMPTY_FC);
+    return;
+  }
+
+  trailSource?.setData({
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "LineString",
+          coordinates: frame.trail.map((p) => [p.lng, p.lat]),
+        },
+      },
+    ],
+  });
+
+  markerSource?.setData({
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: {},
+        geometry: { type: "Point", coordinates: [frame.position.lng, frame.position.lat] },
+      },
+    ],
+  });
+
+  if (options.pan) {
+    // jumpTo (no easing) is deliberate: replay frames already arrive ~60/sec with their
+    // own eased interpolation, so layering map easing on top would fight itself and
+    // read as stutter instead of smooth continuous motion.
+    map.jumpTo({ center: [frame.position.lng, frame.position.lat] });
   }
 }
 

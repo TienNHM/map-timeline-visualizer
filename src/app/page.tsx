@@ -6,8 +6,10 @@ import MapView from "@/components/MapView";
 import TimelineSlider from "@/components/TimelineSlider";
 import StatsPanel from "@/components/StatsPanel";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
+import ReplayControls from "@/components/ReplayControls";
 import { TimelineData } from "@/lib/timeline/types";
 import { computeStats, segmentsWithinRange } from "@/lib/timeline/stats";
+import { ReplayFrame } from "@/lib/timeline/replay";
 
 function toDateKey(iso: string): string {
   return iso.slice(0, 10);
@@ -33,6 +35,7 @@ export default function Home() {
   const [data, setData] = useState<TimelineData | null>(null);
   const [startIndex, setStartIndex] = useState(0);
   const [endIndex, setEndIndex] = useState(0);
+  const [replayFrame, setReplayFrame] = useState<ReplayFrame | null>(null);
 
   const dates = useMemo(() => {
     if (!data) return [];
@@ -123,10 +126,14 @@ export default function Home() {
           <div className="flex min-h-80 flex-1 flex-col gap-3 sm:min-h-100 sm:gap-4 lg:min-h-0">
             <div className="glass-panel flex-1 overflow-hidden p-1.5">
               <div className="h-full w-full overflow-hidden rounded-[0.9rem]">
-                <MapView segments={filteredSegments} rawTrack={filteredRawTrack} />
+                <MapView
+                  segments={filteredSegments}
+                  rawTrack={filteredRawTrack}
+                  replayFrame={replayFrame}
+                />
               </div>
             </div>
-            <div className="glass-panel shrink-0 p-3 sm:p-4">
+            <div className="glass-panel flex shrink-0 flex-col gap-3 p-3 sm:p-4">
               <TimelineSlider
                 dates={dates}
                 startIndex={startIndex}
@@ -136,6 +143,7 @@ export default function Home() {
                   setEndIndex(e);
                 }}
               />
+              <ReplayControls segments={filteredSegments} onFrame={setReplayFrame} />
             </div>
           </div>
           <aside className="scroll-thin flex w-full flex-col gap-3 sm:gap-4 lg:w-96 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
