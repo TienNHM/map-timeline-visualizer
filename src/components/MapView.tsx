@@ -7,6 +7,8 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { TimelineSegment, TrackPoint } from "@/lib/timeline/types";
 import { boundsOf } from "@/lib/timeline/geo";
 import { isTrip, isVisit } from "@/lib/timeline/stats";
+import { useTheme } from "@/components/ThemeProvider";
+import { loadTintedStyle } from "@/lib/mapTint";
 
 // MapLibre's default worker auto-detection breaks when bundled by Next.js, leaving
 // GeoJSON sources permanently stuck in a "loading" state with nothing rendered.
@@ -20,94 +22,145 @@ interface MapViewProps {
   rawTrack?: TrackPoint[];
 }
 
-// Free, no-key-required dark vector basemap (OSM data via CARTO). Chosen over a CSS
-// invert()-filter hack because MapLibre renders every layer — basemap and our own
-// trip/visit overlays alike — onto a single canvas, so a filter would distort our colors too.
-const DARK_STYLE_URL = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
+
+interface OverlayColors {
+  accent: string;
+  accent2: string;
+  isLight: boolean;
+}
 
 export default function MapView({ segments, rawTrack = [] }: MapViewProps) {
+  const { themeId, isLight, themes } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  const segmentsRef = useRef(segments);
+  const rawTrackRef = useRef(rawTrack);
+  const colorsRef = useRef<OverlayColors>(themeColors(themeId, isLight, themes));
+  const hasFitRef = useRef(false);
+  const styleGenerationRef = useRef(0);
+
+  useEffect(() => {
+    segmentsRef.current = segments;
+    rawTrackRef.current = rawTrack;
+  }, [segments, rawTrack]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: DARK_STYLE_URL,
-      center: [0, 0],
-      zoom: 2,
-    });
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    let cancelled = false;
+    const generation = ++styleGenerationRef.current;
 
-    map.on("load", () => {
-      map.addSource("raw-track", {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: [] },
-      });
-      map.addLayer({
-        id: "raw-track-line",
-        type: "line",
-        source: "raw-track",
-        paint: {
-          "line-color": "#ffffff",
-          "line-width": 1.5,
-          "line-opacity": 0.25,
-          "line-dasharray": [1, 1.5],
-        },
-      });
+    loadTintedStyle(colorsRef.current.isLight, colorsRef.current.accent, colorsRef.current.accent2).then((style) => {
+      if (cancelled || !containerRef.current || generation !== styleGenerationRef.current) return;
 
-      map.addSource("trips", {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: [] },
+      const map = new maplibregl.Map({
+        container: containerRef.current,
+        style,
+        center: [0, 0],
+        zoom: 2,
       });
-      map.addLayer({
-        id: "trips-line",
-        type: "line",
-        source: "trips",
-        paint: {
-          "line-color": "#8b7cf6",
-          "line-width": 2.5,
-          "line-opacity": 0.9,
-        },
-      });
+      map.addControl(new maplibregl.NavigationControl(), "top-right");
 
-      map.addSource("visits", {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: [] },
-      });
-      map.addLayer({
-        id: "visits-circle",
-        type: "circle",
-        source: "visits",
-        paint: {
-          "circle-radius": 5,
-          "circle-color": "#34d3a8",
-          "circle-stroke-width": 2,
-          "circle-stroke-color": "#0b0b12",
-        },
+      // Fires on initial style load AND after every setStyle() call, so this single
+      // handler both bootstraps the overlay layers and re-adds them when the basemap
+      // is swapped for a different theme's tint.
+      map.on("style.load", () => {
+        setupOverlayLayers(map, colorsRef.current);
+        renderData(map, segmentsRef.current, rawTrackRef.current, { fit: !hasFitRef.current });
+        hasFitRef.current = true;
       });
 
       mapRef.current = map;
-      renderData(map, segments, rawTrack);
     });
 
     return () => {
-      map.remove();
+      cancelled = true;
+      mapRef.current?.remove();
       mapRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (mapRef.current) {
-      renderData(mapRef.current, segments, rawTrack);
+      renderData(mapRef.current, segments, rawTrack, { fit: true });
     }
   }, [segments, rawTrack]);
 
-  return <div ref={containerRef} className="map-dark-tiles h-full min-h-100 w-full" />;
+  useEffect(() => {
+    const nextColors = themeColors(themeId, isLight, themes);
+    colorsRef.current = nextColors;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const generation = ++styleGenerationRef.current;
+    loadTintedStyle(nextColors.isLight, nextColors.accent, nextColors.accent2).then((style) => {
+      if (generation !== styleGenerationRef.current || mapRef.current !== map) return;
+      map.setStyle(style);
+    });
+  }, [themeId, isLight, themes]);
+
+  return (
+    <div ref={containerRef} className={`h-full min-h-100 w-full ${isLight ? "" : "map-dark-tiles"}`} />
+  );
 }
 
-function renderData(map: MapLibreMap, segments: TimelineSegment[], rawTrack: TrackPoint[]) {
+function themeColors(themeId: string, isLight: boolean, themes: { id: string; swatch: [string, string] }[]): OverlayColors {
+  const theme = themes.find((t) => t.id === themeId) ?? themes[0];
+  return { accent: theme.swatch[0], accent2: theme.swatch[1], isLight };
+}
+
+function setupOverlayLayers(map: MapLibreMap, colors: OverlayColors) {
+  if (!map.getSource("raw-track")) {
+    map.addSource("raw-track", { type: "geojson", data: EMPTY_FC });
+    map.addLayer({
+      id: "raw-track-line",
+      type: "line",
+      source: "raw-track",
+      paint: {
+        "line-color": colors.isLight ? "#111111" : "#ffffff",
+        "line-width": 1.5,
+        "line-opacity": 0.3,
+        "line-dasharray": [1, 1.5],
+      },
+    });
+  }
+
+  if (!map.getSource("trips")) {
+    map.addSource("trips", { type: "geojson", data: EMPTY_FC });
+    map.addLayer({
+      id: "trips-line",
+      type: "line",
+      source: "trips",
+      paint: {
+        "line-color": colors.accent,
+        "line-width": 2.5,
+        "line-opacity": 0.9,
+      },
+    });
+  }
+
+  if (!map.getSource("visits")) {
+    map.addSource("visits", { type: "geojson", data: EMPTY_FC });
+    map.addLayer({
+      id: "visits-circle",
+      type: "circle",
+      source: "visits",
+      paint: {
+        "circle-radius": 5,
+        "circle-color": colors.accent2,
+        "circle-stroke-width": 2,
+        "circle-stroke-color": colors.isLight ? "#ffffff" : "#0b0b12",
+      },
+    });
+  }
+}
+
+function renderData(
+  map: MapLibreMap,
+  segments: TimelineSegment[],
+  rawTrack: TrackPoint[],
+  options: { fit: boolean }
+) {
   const rawTrackSource = map.getSource("raw-track") as GeoJSONSource | undefined;
   if (rawTrack.length > 1) {
     rawTrackSource?.setData({
@@ -124,7 +177,7 @@ function renderData(map: MapLibreMap, segments: TimelineSegment[], rawTrack: Tra
       ],
     });
   } else {
-    rawTrackSource?.setData({ type: "FeatureCollection", features: [] });
+    rawTrackSource?.setData(EMPTY_FC);
   }
 
   const tripFeatures = segments.filter(isTrip).map((trip) => ({
@@ -153,6 +206,8 @@ function renderData(map: MapLibreMap, segments: TimelineSegment[], rawTrack: Tra
 
   const visitSource = map.getSource("visits") as GeoJSONSource | undefined;
   visitSource?.setData({ type: "FeatureCollection", features: visitFeatures });
+
+  if (!options.fit) return;
 
   const allPoints = [
     ...segments.filter(isTrip).flatMap((t) => t.path),

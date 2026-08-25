@@ -5,6 +5,7 @@ import FileUpload from "@/components/FileUpload";
 import MapView from "@/components/MapView";
 import TimelineSlider from "@/components/TimelineSlider";
 import StatsPanel from "@/components/StatsPanel";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { TimelineData } from "@/lib/timeline/types";
 import { computeStats, segmentsWithinRange } from "@/lib/timeline/stats";
 
@@ -102,9 +103,12 @@ export default function Home() {
             </p>
           </div>
         </div>
-        <div className="hidden items-center gap-1.5 rounded-full border border-(--panel-border) bg-white/5 px-3 py-1.5 text-xs text-(--text-muted) md:flex">
-          <span className="h-1.5 w-1.5 rounded-full bg-(--accent-2)" style={{ boxShadow: "0 0 6px var(--accent-2)" }} />
-          100% local & private
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-3 py-1.5 text-xs text-(--text-muted) md:flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-(--accent-2)" style={{ boxShadow: "0 0 6px var(--accent-2)" }} />
+            100% local & private
+          </div>
+          <ThemeSwitcher />
         </div>
       </header>
 

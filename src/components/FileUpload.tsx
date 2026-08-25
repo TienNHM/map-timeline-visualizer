@@ -52,7 +52,7 @@ export default function FileUpload({ onLoaded }: FileUploadProps) {
       className={`glass-panel group relative flex cursor-pointer flex-col items-center gap-4 overflow-hidden px-5 py-10 text-center transition-all duration-300 sm:px-10 sm:py-16 ${
         isDragging
           ? "border-(--accent) bg-(--panel-strong) scale-[1.01]"
-          : "hover:border-white/20 hover:bg-(--panel-strong)"
+          : "hover:border-(--accent)/40 hover:bg-(--panel-strong)"
       }`}
     >
       <div
@@ -71,7 +71,7 @@ export default function FileUpload({ onLoaded }: FileUploadProps) {
         }}
       />
 
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-(--panel-border) bg-white/5 text-(--accent)">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-(--panel-border) bg-(--panel) text-(--accent)">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
@@ -98,7 +98,7 @@ export default function FileUpload({ onLoaded }: FileUploadProps) {
         </p>
       </div>
 
-      <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-white/5 px-3 py-1 text-xs text-(--text-muted)">
+      <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-3 py-1 text-xs text-(--text-muted)">
         <span className="h-1.5 w-1.5 rounded-full bg-(--accent-2)" />
         Nothing leaves your device — parsing happens entirely in your browser
       </div>

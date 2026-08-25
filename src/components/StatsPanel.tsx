@@ -113,7 +113,7 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
                   <span className="w-30 shrink-0 truncate text-(--text-muted)">
                     {formatActivity(activity)}
                   </span>
-                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/8">
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-(--panel-border)">
                     <div
                       className="h-full rounded-full"
                       style={{
@@ -141,7 +141,7 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
             {stats.placeVisitCounts.slice(0, 8).map((p, i) => (
               <li
                 key={p.label}
-                className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-white/5"
+                className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-(--panel)"
               >
                 <span className="flex items-center gap-2.5 truncate">
                   <span className="stat-number w-5 shrink-0 text-xs text-(--text-faint)">
@@ -164,7 +164,7 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
 function StatCard({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
     <div className="glass-panel flex flex-col gap-2.5 p-4">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-(--panel-border) bg-white/5 text-(--accent)">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-(--panel-border) bg-(--panel) text-(--accent)">
         <StatIcon path={icon} />
       </div>
       <div className="flex flex-col gap-0.5">

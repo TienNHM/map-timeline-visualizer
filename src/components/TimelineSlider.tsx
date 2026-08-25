@@ -46,7 +46,7 @@ export default function TimelineSlider({
         <span className="text-(--text-faint)">{dates[maxIndex]}</span>
       </div>
       <div className="relative h-6">
-        <div className="absolute top-1/2 h-1 w-full -translate-y-1/2 rounded-full bg-white/8" />
+        <div className="absolute top-1/2 h-1 w-full -translate-y-1/2 rounded-full bg-(--panel-border)" />
         <div
           className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full"
           style={{
