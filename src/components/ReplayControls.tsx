@@ -3,10 +3,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TimelineSegment } from "@/lib/timeline/types";
 import { advanceReplay, buildReplayTrack, CAMERA_MODES, CameraMode, ReplayFrame } from "@/lib/timeline/replay";
+import Dropdown, { DropdownOption } from "@/components/Dropdown";
+import { Icon, IconName } from "@/components/Icon";
 
 /** Wall-clock time a full replay takes at 1x speed, regardless of how long the trip actually spanned. */
 const BASE_PLAYBACK_MS = 20000;
 const SPEEDS = [1, 2, 4, 8] as const;
+const SPEED_OPTIONS: DropdownOption<string>[] = SPEEDS.map((s) => ({
+  value: String(s),
+  label: `${s}x speed`,
+  description: `Full replay takes ~${(BASE_PLAYBACK_MS / 1000 / s).toLocaleString(undefined, { maximumFractionDigits: 1 })}s`,
+}));
+
+const CAMERA_MODE_ICON: Record<CameraMode, IconName> = {
+  fixed: "cameraFixed",
+  steady: "cameraSteady",
+  dynamic: "cameraDynamic",
+};
+
+const CAMERA_MODE_OPTIONS: DropdownOption<CameraMode>[] = CAMERA_MODES.map((m) => ({
+  value: m.id,
+  label: m.label,
+  description: m.description,
+  icon: <Icon name={CAMERA_MODE_ICON[m.id]} className="h-3.5 w-3.5 shrink-0" />,
+}));
 
 interface ReplayControlsProps {
   segments: TimelineSegment[];
@@ -147,16 +167,7 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-transform active:scale-95"
         style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-2))" }}
       >
-        {isPlaying ? (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
-            <rect x="6" y="5" width="4" height="14" rx="1" />
-            <rect x="14" y="5" width="4" height="14" rx="1" />
-          </svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
-            <path d="M7 4.5v15l13-7.5-13-7.5Z" />
-          </svg>
-        )}
+        <Icon name={isPlaying ? "pause" : "play"} className="h-4 w-4" />
       </button>
 
       <button
@@ -164,9 +175,7 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
         aria-label="Restart replay"
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-(--text-muted) transition-colors hover:text-(--text)"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M4 9a8 8 0 1 1 2.34 6.06" />
-        </svg>
+        <Icon name="restart" className="h-4 w-4" />
       </button>
 
       <div className="flex-1">
@@ -190,28 +199,34 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
         </div>
       </div>
 
-      <button
-        onClick={() => {
-          const idx = CAMERA_MODES.findIndex((m) => m.id === cameraMode);
-          onCameraModeChange(CAMERA_MODES[(idx + 1) % CAMERA_MODES.length].id);
-        }}
-        title={CAMERA_MODES.find((m) => m.id === cameraMode)?.label}
-        className="hidden shrink-0 items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-2.5 py-1 text-xs text-(--text-muted) transition-colors hover:text-(--text) sm:flex"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5">
-          {cameraMode === "fixed" && <path strokeLinecap="round" strokeLinejoin="round" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v3m0 12v3m9-9h-3M6 12H3" />}
-          {cameraMode === "steady" && <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v4m0 10v4M4.2 6.2l2.9 2.9m9.8 0 2.9-2.9M4.2 17.8l2.9-2.9m9.8 0 2.9 2.9M9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z" />}
-          {cameraMode === "dynamic" && <path strokeLinecap="round" strokeLinejoin="round" d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" />}
-        </svg>
-        {CAMERA_MODES.find((m) => m.id === cameraMode)?.label}
-      </button>
+      <div className="hidden sm:block">
+        <Dropdown
+          value={cameraMode}
+          options={CAMERA_MODE_OPTIONS}
+          onChange={onCameraModeChange}
+          menuLabel="Camera"
+          renderTrigger={(current) => (
+            <>
+              <Icon name={CAMERA_MODE_ICON[current.value]} className="h-3.5 w-3.5 shrink-0" />
+              <span>{current.label}</span>
+            </>
+          )}
+        />
+      </div>
 
-      <button
-        onClick={() => setSpeed((s) => SPEEDS[(SPEEDS.indexOf(s as (typeof SPEEDS)[number]) + 1) % SPEEDS.length])}
-        className="stat-number shrink-0 rounded-full border border-(--panel-border) bg-(--panel) px-2.5 py-1 text-xs text-(--text-muted) transition-colors hover:text-(--text)"
-      >
-        {speed}x
-      </button>
+      <Dropdown
+        value={String(speed)}
+        options={SPEED_OPTIONS}
+        onChange={(v) => setSpeed(Number(v))}
+        menuLabel="Playback speed"
+        triggerClassName="stat-number flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-2.5 py-1 text-xs text-(--text-muted) transition-colors hover:text-(--text)"
+        renderTrigger={() => (
+          <>
+            <Icon name="speed" className="h-3.5 w-3.5 shrink-0" />
+            <span>{speed}x</span>
+          </>
+        )}
+      />
     </div>
   );
 }

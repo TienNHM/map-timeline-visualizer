@@ -9,10 +9,10 @@ import { isTrip, isVisit } from "./stats";
  */
 export type CameraMode = "fixed" | "steady" | "dynamic";
 
-export const CAMERA_MODES: { id: CameraMode; label: string }[] = [
-  { id: "fixed", label: "Fixed zoom" },
-  { id: "steady", label: "Steady following" },
-  { id: "dynamic", label: "Dynamic following" },
+export const CAMERA_MODES: { id: CameraMode; label: string; description: string }[] = [
+  { id: "fixed", label: "Fixed zoom", description: "Camera stays put — the whole route stays in view." },
+  { id: "steady", label: "Steady following", description: "Pans to keep the marker centered at a constant zoom." },
+  { id: "dynamic", label: "Dynamic following", description: "Zooms in/out and rotates to match your speed and direction." },
 ];
 
 export interface ReplayPoint extends LatLng {

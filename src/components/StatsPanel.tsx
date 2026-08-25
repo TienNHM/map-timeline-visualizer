@@ -1,4 +1,5 @@
 import { TimelineStats } from "@/lib/timeline/stats";
+import { Icon, IconName } from "@/components/Icon";
 
 interface StatsPanelProps {
   stats: TimelineStats;
@@ -59,28 +60,6 @@ function formatPlaceLabel(label: string): string {
   return label;
 }
 
-function StatIcon({ path }: { path: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="h-4.5 w-4.5"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d={path} />
-    </svg>
-  );
-}
-
-const ICON_PATHS = {
-  route: "M4 19c3 0 3-6 6-6s3 6 6 6M4 5c3 0 3 6 6 6s3-6 6-6",
-  trip: "M13 5l7 7-7 7M4 12h16",
-  pin: "M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21ZM12 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
-  layers: "m12 3 8 4-8 4-8-4 8-4Zm-8 8 8 4 8-4M4 15l8 4 8-4",
-};
-
 export default function StatsPanel({ stats }: StatsPanelProps) {
   const activityEntries = Object.entries(stats.distanceByActivity).sort(
     (a, b) => b[1] - a[1]
@@ -90,10 +69,10 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3">
-        <StatCard icon={ICON_PATHS.route} label="Total distance" value={formatKm(stats.totalDistanceMeters)} />
-        <StatCard icon={ICON_PATHS.trip} label="Trips" value={stats.tripCount.toLocaleString()} />
-        <StatCard icon={ICON_PATHS.pin} label="Places visited" value={stats.visitCount.toLocaleString()} />
-        <StatCard icon={ICON_PATHS.layers} label="Unique places" value={stats.placeVisitCounts.length.toLocaleString()} />
+        <StatCard icon="route" label="Total distance" value={formatKm(stats.totalDistanceMeters)} />
+        <StatCard icon="trips" label="Trips" value={stats.tripCount.toLocaleString()} />
+        <StatCard icon="pin" label="Places visited" value={stats.visitCount.toLocaleString()} />
+        <StatCard icon="layers" label="Unique places" value={stats.placeVisitCounts.length.toLocaleString()} />
       </div>
 
       {activityEntries.length > 0 && (
@@ -161,11 +140,11 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
   );
 }
 
-function StatCard({ icon, label, value }: { icon: string; label: string; value: string }) {
+function StatCard({ icon, label, value }: { icon: IconName; label: string; value: string }) {
   return (
     <div className="glass-panel flex flex-col gap-2.5 p-4">
       <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-(--panel-border) bg-(--panel) text-(--accent)">
-        <StatIcon path={icon} />
+        <Icon name={icon} className="h-4.5 w-4.5" />
       </div>
       <div className="flex flex-col gap-0.5">
         <div className="stat-number text-xl font-semibold text-(--text)">{value}</div>

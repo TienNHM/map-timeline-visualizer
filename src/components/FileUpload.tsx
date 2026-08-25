@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { parseGoogleTimelineFile } from "@/lib/timeline/parse";
 import { TimelineData } from "@/lib/timeline/types";
+import { Icon } from "@/components/Icon";
 
 interface FileUploadProps {
   onLoaded: (data: TimelineData) => void;
@@ -72,20 +73,7 @@ export default function FileUpload({ onLoaded }: FileUploadProps) {
       />
 
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-(--panel-border) bg-(--panel) text-(--accent)">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          className="h-7 w-7"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 3v12m0-12 4 4m-4-4-4 4M4 17.5v.5A2 2 0 0 0 6 20h12a2 2 0 0 0 2-2v-.5"
-          />
-        </svg>
+        <Icon name="upload" className="h-7 w-7" />
       </div>
 
       <div className="flex flex-col gap-1.5">

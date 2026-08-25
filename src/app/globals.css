@@ -14,6 +14,7 @@
   --accent: #8b7cf6;
   --accent-2: #34d3a8;
   --thumb-border: #0d0d14;
+  --menu-solid: rgba(15, 15, 22, 0.97);
 
   --background: var(--bg);
   --foreground: var(--text);
@@ -66,6 +67,7 @@
   --accent: #6d5bd0;
   --accent-2: #0f9c82;
   --thumb-border: #ffffff;
+  --menu-solid: rgba(255, 255, 255, 0.97);
 }
 
 @theme inline {
@@ -109,6 +111,17 @@ body::before {
   border: 1px solid var(--panel-border);
   border-radius: 1.25rem;
   backdrop-filter: blur(20px);
+}
+
+/* Floating menus (dropdowns) need a near-opaque backing — unlike the static panels
+   .glass-panel is meant for, these can appear directly over the busy, high-contrast
+   map, where a translucent tint alone isn't enough to keep text legible. */
+.dropdown-menu {
+  background: var(--menu-solid);
+  border: 1px solid var(--panel-border);
+  border-radius: 1.25rem;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.45);
 }
 
 .stat-number {
