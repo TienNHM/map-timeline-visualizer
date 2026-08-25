@@ -90,39 +90,39 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-(--panel-border) px-6 py-4">
+      <header className="flex items-center justify-between gap-4 border-b border-(--panel-border) px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center gap-3">
           <Logo />
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-(--text)">
+            <h1 className="text-base font-semibold tracking-tight text-(--text) sm:text-lg">
               Map <span className="text-gradient">Timeline</span> Visualizer
             </h1>
-            <p className="text-xs text-(--text-muted)">
+            <p className="hidden text-xs text-(--text-muted) sm:block">
               Import your Google Maps Timeline export to see journeys, places, and stats.
             </p>
           </div>
         </div>
-        <div className="hidden items-center gap-1.5 rounded-full border border-(--panel-border) bg-white/5 px-3 py-1.5 text-xs text-(--text-muted) sm:flex">
+        <div className="hidden items-center gap-1.5 rounded-full border border-(--panel-border) bg-white/5 px-3 py-1.5 text-xs text-(--text-muted) md:flex">
           <span className="h-1.5 w-1.5 rounded-full bg-(--accent-2)" style={{ boxShadow: "0 0 6px var(--accent-2)" }} />
           100% local & private
         </div>
       </header>
 
       {!data ? (
-        <main className="flex flex-1 items-center justify-center p-6">
+        <main className="flex flex-1 items-center justify-center p-4 sm:p-6">
           <div className="w-full max-w-xl">
             <FileUpload onLoaded={handleLoaded} />
           </div>
         </main>
       ) : (
-        <main className="flex flex-1 flex-col gap-4 p-4 lg:flex-row">
-          <div className="flex min-h-100 flex-1 flex-col gap-4">
+        <main className="flex flex-1 flex-col gap-3 p-3 sm:gap-4 sm:p-4 lg:flex-row">
+          <div className="flex min-h-80 flex-1 flex-col gap-3 sm:min-h-100 sm:gap-4">
             <div className="glass-panel flex-1 overflow-hidden p-1.5">
               <div className="h-full w-full overflow-hidden rounded-[0.9rem]">
                 <MapView segments={filteredSegments} rawTrack={filteredRawTrack} />
               </div>
             </div>
-            <div className="glass-panel p-4">
+            <div className="glass-panel p-3 sm:p-4">
               <TimelineSlider
                 dates={dates}
                 startIndex={startIndex}
@@ -134,8 +134,8 @@ export default function Home() {
               />
             </div>
           </div>
-          <aside className="flex w-full flex-col gap-4 lg:w-96">
-            <div className="glass-panel p-4">
+          <aside className="flex w-full flex-col gap-3 sm:gap-4 lg:w-96">
+            <div className="glass-panel p-3 sm:p-4">
               <StatsPanel stats={stats} />
             </div>
             <button

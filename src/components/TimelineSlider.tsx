@@ -33,7 +33,14 @@ export default function TimelineSlider({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-baseline justify-between gap-3 text-xs">
+      <div className="flex flex-col items-center gap-1 sm:hidden">
+        <span className="stat-number text-sm font-medium text-(--text)">{label}</span>
+        <div className="flex w-full justify-between text-[11px] text-(--text-faint)">
+          <span>{dates[0]}</span>
+          <span>{dates[maxIndex]}</span>
+        </div>
+      </div>
+      <div className="hidden items-baseline justify-between gap-3 text-xs sm:flex">
         <span className="text-(--text-faint)">{dates[0]}</span>
         <span className="stat-number text-sm font-medium text-(--text)">{label}</span>
         <span className="text-(--text-faint)">{dates[maxIndex]}</span>

@@ -142,3 +142,17 @@ body::before {
   box-shadow: 0 0 0 1px var(--panel-border), 0 2px 8px rgba(139, 124, 246, 0.5);
   cursor: pointer;
 }
+
+/* Bigger thumbs on touch devices, where a 16px target is too fiddly to drag precisely. */
+@media (pointer: coarse) {
+  .dual-range::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+    margin-top: -10px;
+  }
+
+  .dual-range::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+  }
+}

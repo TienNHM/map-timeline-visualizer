@@ -49,7 +49,7 @@ export default function FileUpload({ onLoaded }: FileUploadProps) {
         if (file) handleFile(file);
       }}
       onClick={() => inputRef.current?.click()}
-      className={`glass-panel group relative flex cursor-pointer flex-col items-center gap-4 overflow-hidden px-10 py-16 text-center transition-all duration-300 ${
+      className={`glass-panel group relative flex cursor-pointer flex-col items-center gap-4 overflow-hidden px-5 py-10 text-center transition-all duration-300 sm:px-10 sm:py-16 ${
         isDragging
           ? "border-(--accent) bg-(--panel-strong) scale-[1.01]"
           : "hover:border-white/20 hover:bg-(--panel-strong)"
