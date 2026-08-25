@@ -88,6 +88,7 @@ export default function MapView({
         renderData(map, segmentsRef.current, rawTrackRef.current, { fit: !hasFitRef.current });
         hasFitRef.current = true;
         renderReplayFrame(map, replayFrameRef.current, { pan: false });
+        setStaticLayersDimmed(map, !!replayFrameRef.current);
       });
 
       mapRef.current = map;
@@ -125,6 +126,13 @@ export default function MapView({
     if (!replayFrame) dynamicCamRef.current.zoom = null;
     renderReplayFrame(map, replayFrame, { pan: true, cameraMode, dynamicCam: dynamicCamRef.current });
   }, [replayFrame, cameraMode]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map) setStaticLayersDimmed(map, !!replayFrame);
+    // Only the start/stop transition (not every per-frame position update) should re-run this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!replayFrame]);
 
   return (
     <div ref={containerRef} className={`h-full min-h-100 w-full ${isLight ? "" : "map-dark-tiles"}`} />
@@ -175,6 +183,7 @@ function setupOverlayLayers(map: MapLibreMap, colors: OverlayColors) {
       paint: {
         "circle-radius": 5,
         "circle-color": colors.accent2,
+        "circle-opacity": 1,
         "circle-stroke-width": 2,
         "circle-stroke-color": colors.isLight ? "#ffffff" : "#0b0b12",
       },
@@ -221,28 +230,62 @@ function setupOverlayLayers(map: MapLibreMap, colors: OverlayColors) {
   }
 }
 
-const DYNAMIC_ZOOM_BY_ACTIVITY: Record<string, number> = {
-  VISIT: 16,
-  WALKING: 16,
-  RUNNING: 16,
-  CYCLING: 15,
-  MOTORCYCLING: 14,
-  IN_PASSENGER_VEHICLE: 13,
-  IN_TAXI: 13,
-  IN_SUBWAY: 13,
-  IN_TRAIN: 12,
-  IN_BUS: 12,
-  IN_FERRY: 12,
-  SAILING: 12,
-  FLYING: 6,
-};
-const DEFAULT_DYNAMIC_ZOOM = 14;
-/** Per-frame easing factor for the dynamic camera's zoom/bearing smoothing (0-1, higher = snappier). */
-const DYNAMIC_CAMERA_EASE = 0.06;
+// Continuous speed -> zoom curve (km/h, zoom), piecewise-linear between points, so the
+// dynamic camera reacts to how fast you're actually covering ground rather than a coarse
+// per-activity bucket — walking a 2 km/h stroll and a 2 km/h traffic-jammed bus both read
+// as "close", while the same bus at highway speed pulls back automatically.
+const SPEED_ZOOM_CURVE: [number, number][] = [
+  [0, 16],
+  [5, 15.5],
+  [15, 14.5],
+  [30, 13],
+  [60, 11.5],
+  [120, 9],
+  [300, 6],
+];
+
+function zoomForSpeedKmh(speedKmh: number): number {
+  if (speedKmh <= SPEED_ZOOM_CURVE[0][0]) return SPEED_ZOOM_CURVE[0][1];
+  for (let i = 1; i < SPEED_ZOOM_CURVE.length; i++) {
+    const [s0, z0] = SPEED_ZOOM_CURVE[i - 1];
+    const [s1, z1] = SPEED_ZOOM_CURVE[i];
+    if (speedKmh <= s1) {
+      const t = (speedKmh - s0) / (s1 - s0);
+      return z0 + (z1 - z0) * t;
+    }
+  }
+  return SPEED_ZOOM_CURVE[SPEED_ZOOM_CURVE.length - 1][1];
+}
+
+/** Per-frame easing factors for the dynamic camera (0-1, higher = snappier). Zooming
+ * out reacts quickly so a sudden burst of speed doesn't clip off-screen; zooming back
+ * in eases more gently so the camera doesn't feel twitchy while cruising. */
+const ZOOM_OUT_EASE = 0.1;
+const ZOOM_IN_EASE = 0.045;
+const BEARING_EASE = 0.06;
 
 function lerpAngle(current: number, target: number, factor: number): number {
   const delta = ((target - current + 540) % 360) - 180;
   return (current + delta * factor + 360) % 360;
+}
+
+const STATIC_LAYER_OPACITY = {
+  full: { trips: 0.9, visits: 1, rawTrack: 0.3 },
+  dimmed: { trips: 0.12, visits: 0.2, rawTrack: 0.08 },
+};
+
+/**
+ * Fades the always-visible full-history layers (every trip/visit in the selected date
+ * range) out of the way while a replay is active. Without this, replaying a large,
+ * unscoped import at a close dynamic-camera zoom buries the moving marker/trail under
+ * a dense tangle of unrelated trips that happen to pass near the same spot at some
+ * other point in the whole range — which reads as visual noise/glare, not a route.
+ */
+function setStaticLayersDimmed(map: MapLibreMap, dimmed: boolean) {
+  const opacity = dimmed ? STATIC_LAYER_OPACITY.dimmed : STATIC_LAYER_OPACITY.full;
+  if (map.getLayer("trips-line")) map.setPaintProperty("trips-line", "line-opacity", opacity.trips);
+  if (map.getLayer("visits-circle")) map.setPaintProperty("visits-circle", "circle-opacity", opacity.visits);
+  if (map.getLayer("raw-track-line")) map.setPaintProperty("raw-track-line", "line-opacity", opacity.rawTrack);
 }
 
 function renderReplayFrame(
@@ -304,10 +347,11 @@ function renderReplayFrame(
 
   const dynamicCam = options.dynamicCam;
   if (dynamicCam.zoom === null) dynamicCam.zoom = map.getZoom();
-  const targetZoom = frame.activityType ? DYNAMIC_ZOOM_BY_ACTIVITY[frame.activityType] ?? DEFAULT_DYNAMIC_ZOOM : DEFAULT_DYNAMIC_ZOOM;
-  dynamicCam.zoom += (targetZoom - dynamicCam.zoom) * DYNAMIC_CAMERA_EASE;
+  const targetZoom = zoomForSpeedKmh(frame.speedKmh);
+  const zoomEase = targetZoom < dynamicCam.zoom ? ZOOM_OUT_EASE : ZOOM_IN_EASE;
+  dynamicCam.zoom += (targetZoom - dynamicCam.zoom) * zoomEase;
   if (frame.bearing !== undefined) {
-    dynamicCam.bearing = lerpAngle(dynamicCam.bearing, frame.bearing, DYNAMIC_CAMERA_EASE);
+    dynamicCam.bearing = lerpAngle(dynamicCam.bearing, frame.bearing, BEARING_EASE);
   }
 
   map.jumpTo({ center, zoom: dynamicCam.zoom, bearing: dynamicCam.bearing });

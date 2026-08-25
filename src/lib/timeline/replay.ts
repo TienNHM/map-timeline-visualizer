@@ -1,5 +1,6 @@
 import { LatLng, TimelineSegment } from "./types";
 import { isTrip, isVisit } from "./stats";
+import { haversineDistance } from "./geo";
 
 /**
  * "fixed" keeps the camera on the overview framing set before playback started.
@@ -73,15 +74,20 @@ export function buildReplayTrack(segments: TimelineSegment[]): ReplayPoint[] {
     .sort((a, b) => a.timeMs - b.timeMs);
 }
 
+/** Caps how many recent points the drawn trail keeps — see advanceReplay for why. */
+const MAX_TRAIL_POINTS = 300;
+
 export interface ReplayFrame {
   position: LatLng;
-  /** All track points reached so far, in order, including the interpolated current position. */
+  /** The most recent points reached (bounded by MAX_TRAIL_POINTS), including the interpolated current position. */
   trail: LatLng[];
   timeMs: number;
-  /** The activity in effect at this moment — drives dynamic-camera zoom choices. */
+  /** The activity in effect at this moment (informational; dynamic-camera zoom is speed-based). */
   activityType?: string;
   /** Compass bearing (0-360) of travel toward the current position, if determinable. */
   bearing?: number;
+  /** Instantaneous speed over the current track leg, in km/h — drives dynamic-camera zoom. */
+  speedKmh: number;
 }
 
 function bearingBetween(a: LatLng, b: LatLng): number {
@@ -126,7 +132,12 @@ export function advanceReplay(
     };
   }
 
-  const trail: LatLng[] = track.slice(0, i + 1).map((p) => ({ lat: p.lat, lng: p.lng }));
+  // Only the most recent leg of history is rendered as the trail. Drawing the full
+  // journey-so-far as one LineString gets extremely expensive (and visually reads as
+  // flashing/glaring, since old, far-away points keep re-rendering every frame) once a
+  // replay covers a large multi-month import with thousands of points.
+  const trailStart = Math.max(0, i + 1 - MAX_TRAIL_POINTS);
+  const trail: LatLng[] = track.slice(trailStart, i + 1).map((p) => ({ lat: p.lat, lng: p.lng }));
   trail.push(position);
 
   const behind = trail[trail.length - 2];
@@ -135,8 +146,15 @@ export function advanceReplay(
       ? bearingBetween(behind, position)
       : undefined;
 
+  let speedKmh = 0;
+  if (next && next.timeMs > current.timeMs) {
+    const legMeters = haversineDistance(current, next);
+    const legSeconds = (next.timeMs - current.timeMs) / 1000;
+    speedKmh = (legMeters / legSeconds) * 3.6;
+  }
+
   return {
-    frame: { position, trail, timeMs: atMs, activityType: current.activityType, bearing },
+    frame: { position, trail, timeMs: atMs, activityType: current.activityType, bearing, speedKmh },
     nextIndex: i,
   };
 }

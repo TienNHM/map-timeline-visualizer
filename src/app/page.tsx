@@ -7,9 +7,11 @@ import TimelineSlider from "@/components/TimelineSlider";
 import StatsPanel from "@/components/StatsPanel";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import ReplayControls from "@/components/ReplayControls";
+import AccuracyFilter from "@/components/AccuracyFilter";
 import { TimelineData } from "@/lib/timeline/types";
 import { computeStats, segmentsWithinRange } from "@/lib/timeline/stats";
 import { CameraMode, ReplayFrame } from "@/lib/timeline/replay";
+import { filterByAccuracy } from "@/lib/timeline/accuracy";
 
 function toDateKey(iso: string): string {
   return iso.slice(0, 10);
@@ -37,6 +39,7 @@ export default function Home() {
   const [endIndex, setEndIndex] = useState(0);
   const [replayFrame, setReplayFrame] = useState<ReplayFrame | null>(null);
   const [cameraMode, setCameraMode] = useState<CameraMode>("steady");
+  const [accuracyLimit, setAccuracyLimit] = useState<number | null>(null);
 
   const dates = useMemo(() => {
     if (!data) return [];
@@ -58,17 +61,22 @@ export default function Home() {
     };
   }, [dates, startIndex, endIndex]);
 
-  const filteredSegments = useMemo(() => {
+  const dateFilteredSegments = useMemo(() => {
     if (!data || !rangeBounds) return [];
     return segmentsWithinRange(data.segments, rangeBounds.start, rangeBounds.end);
   }, [data, rangeBounds]);
 
-  const filteredRawTrack = useMemo(() => {
+  const dateFilteredRawTrack = useMemo(() => {
     if (!data || !rangeBounds) return [];
     return data.rawTrack.filter(
       (p) => !!p.time && p.time >= rangeBounds.start && p.time <= rangeBounds.end
     );
   }, [data, rangeBounds]);
+
+  const { segments: filteredSegments, rawTrack: filteredRawTrack } = useMemo(
+    () => filterByAccuracy(dateFilteredSegments, dateFilteredRawTrack, accuracyLimit),
+    [dateFilteredSegments, dateFilteredRawTrack, accuracyLimit]
+  );
 
   const stats = useMemo(
     () =>
@@ -151,6 +159,7 @@ export default function Home() {
                 cameraMode={cameraMode}
                 onCameraModeChange={setCameraMode}
               />
+              <AccuracyFilter value={accuracyLimit} onChange={setAccuracyLimit} />
             </div>
           </div>
           <aside className="scroll-thin flex w-full flex-col gap-3 sm:gap-4 lg:w-96 lg:min-h-0 lg:overflow-y-auto lg:pr-1">

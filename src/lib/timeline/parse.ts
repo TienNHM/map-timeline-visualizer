@@ -223,7 +223,11 @@ function parseRawRecords(json: Record<string, unknown>): TimelineData {
       const timestamp =
         (e.timestamp as string | undefined) ??
         (typeof e.timestampMs === "string" ? new Date(Number(e.timestampMs)).toISOString() : undefined);
-      return { ...latLng, time: timestamp };
+      return {
+        ...latLng,
+        time: timestamp,
+        accuracyMeters: typeof e.accuracy === "number" ? e.accuracy : undefined,
+      };
     })
     .filter((p): p is TrackPoint => p !== null);
 
@@ -276,7 +280,12 @@ function parseTimelineEdits(json: Record<string, unknown>): TimelineData {
     if (position) {
       const loc = latLngFromShortE7Fields(position.point as Record<string, unknown> | undefined);
       if (loc) {
-        rawTrack.push({ ...loc, time: position.timestamp as string | undefined });
+        const accuracyMm = position.accuracyMm;
+        rawTrack.push({
+          ...loc,
+          time: position.timestamp as string | undefined,
+          accuracyMeters: typeof accuracyMm === "number" ? accuracyMm / 1000 : undefined,
+        });
       }
       continue;
     }

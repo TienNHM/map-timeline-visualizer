@@ -5,6 +5,8 @@ export interface LatLng {
 
 export interface TrackPoint extends LatLng {
   time?: string;
+  /** Reported GPS accuracy radius in meters, when the source data provides it. */
+  accuracyMeters?: number;
 }
 
 export interface Visit {
