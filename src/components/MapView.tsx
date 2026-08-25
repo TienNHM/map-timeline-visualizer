@@ -20,24 +20,10 @@ interface MapViewProps {
   rawTrack?: TrackPoint[];
 }
 
-const OSM_STYLE: maplibregl.StyleSpecification = {
-  version: 8,
-  sources: {
-    osm: {
-      type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "© OpenStreetMap contributors",
-    },
-  },
-  layers: [
-    {
-      id: "osm",
-      type: "raster",
-      source: "osm",
-    },
-  ],
-};
+// Free, no-key-required dark vector basemap (OSM data via CARTO). Chosen over a CSS
+// invert()-filter hack because MapLibre renders every layer — basemap and our own
+// trip/visit overlays alike — onto a single canvas, so a filter would distort our colors too.
+const DARK_STYLE_URL = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
 export default function MapView({ segments, rawTrack = [] }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,7 +33,7 @@ export default function MapView({ segments, rawTrack = [] }: MapViewProps) {
     if (!containerRef.current || mapRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: OSM_STYLE,
+      style: DARK_STYLE_URL,
       center: [0, 0],
       zoom: 2,
     });
@@ -63,10 +49,10 @@ export default function MapView({ segments, rawTrack = [] }: MapViewProps) {
         type: "line",
         source: "raw-track",
         paint: {
-          "line-color": "#9ca3af",
+          "line-color": "#ffffff",
           "line-width": 1.5,
-          "line-opacity": 0.6,
-          "line-dasharray": [1, 1],
+          "line-opacity": 0.25,
+          "line-dasharray": [1, 1.5],
         },
       });
 
@@ -79,9 +65,9 @@ export default function MapView({ segments, rawTrack = [] }: MapViewProps) {
         type: "line",
         source: "trips",
         paint: {
-          "line-color": "#2563eb",
-          "line-width": 3,
-          "line-opacity": 0.8,
+          "line-color": "#8b7cf6",
+          "line-width": 2.5,
+          "line-opacity": 0.9,
         },
       });
 
@@ -94,10 +80,10 @@ export default function MapView({ segments, rawTrack = [] }: MapViewProps) {
         type: "circle",
         source: "visits",
         paint: {
-          "circle-radius": 6,
-          "circle-color": "#16a34a",
+          "circle-radius": 5,
+          "circle-color": "#34d3a8",
           "circle-stroke-width": 2,
-          "circle-stroke-color": "#ffffff",
+          "circle-stroke-color": "#0b0b12",
         },
       });
 
@@ -118,7 +104,7 @@ export default function MapView({ segments, rawTrack = [] }: MapViewProps) {
     }
   }, [segments, rawTrack]);
 
-  return <div ref={containerRef} className="w-full h-full min-h-100" />;
+  return <div ref={containerRef} className="map-dark-tiles h-full min-h-100 w-full" />;
 }
 
 function renderData(map: MapLibreMap, segments: TimelineSegment[], rawTrack: TrackPoint[]) {

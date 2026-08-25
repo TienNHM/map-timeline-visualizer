@@ -25,17 +25,29 @@ export default function TimelineSlider({
   }, [dates, startIndex, endIndex]);
 
   if (maxIndex < 1) {
-    return <p className="text-sm text-gray-500">{dates[0] ?? "No data"}</p>;
+    return <p className="text-sm text-(--text-muted)">{dates[0] ?? "No data"}</p>;
   }
 
+  const startPct = (startIndex / maxIndex) * 100;
+  const endPct = (endIndex / maxIndex) * 100;
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex justify-between text-xs text-gray-500">
-        <span>{dates[0]}</span>
-        <span className="font-medium text-gray-800 dark:text-gray-200">{label}</span>
-        <span>{dates[maxIndex]}</span>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-baseline justify-between gap-3 text-xs">
+        <span className="text-(--text-faint)">{dates[0]}</span>
+        <span className="stat-number text-sm font-medium text-(--text)">{label}</span>
+        <span className="text-(--text-faint)">{dates[maxIndex]}</span>
       </div>
       <div className="relative h-6">
+        <div className="absolute top-1/2 h-1 w-full -translate-y-1/2 rounded-full bg-white/8" />
+        <div
+          className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full"
+          style={{
+            left: `${startPct}%`,
+            width: `${endPct - startPct}%`,
+            background: "linear-gradient(90deg, var(--accent), var(--accent-2))",
+          }}
+        />
         <input
           type="range"
           min={0}

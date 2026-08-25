@@ -1,8 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #08080d;
+  --bg-glow-1: #4338ca;
+  --bg-glow-2: #0d9488;
+  --panel: rgba(255, 255, 255, 0.035);
+  --panel-strong: rgba(255, 255, 255, 0.06);
+  --panel-border: rgba(255, 255, 255, 0.09);
+  --text: #f4f4f6;
+  --text-muted: #8d8d99;
+  --text-faint: #5b5b66;
+  --accent: #8b7cf6;
+  --accent-2: #34d3a8;
+
+  --background: var(--bg);
+  --foreground: var(--text);
 }
 
 @theme inline {
@@ -12,17 +24,79 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--panel-border);
+}
+
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  position: relative;
+  min-height: 100%;
+}
+
+/* Fixed ambient glow behind all content, indie-dashboard style. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(650px 450px at 8% -5%, color-mix(in srgb, var(--bg-glow-1) 28%, transparent), transparent 70%),
+    radial-gradient(600px 500px at 95% 10%, color-mix(in srgb, var(--bg-glow-2) 20%, transparent), transparent 70%),
+    var(--bg);
+}
+
+.glass-panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 1.25rem;
+  backdrop-filter: blur(20px);
+}
+
+.stat-number {
+  font-family: var(--font-mono), monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Re-skins MapLibre's default light control chrome to match the dark shell around it. */
+.map-dark-tiles .maplibregl-ctrl-attrib,
+.map-dark-tiles .maplibregl-ctrl-attrib a {
+  background: transparent !important;
+  color: var(--text-muted) !important;
+}
+
+.map-dark-tiles .maplibregl-ctrl-group {
+  background: rgba(20, 20, 26, 0.85) !important;
+  border: 1px solid var(--panel-border);
+  box-shadow: none !important;
+  backdrop-filter: blur(8px);
+}
+
+.map-dark-tiles .maplibregl-ctrl-group button {
+  background: transparent !important;
+}
+
+.map-dark-tiles .maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--panel-border) !important;
+}
+
+.map-dark-tiles .maplibregl-ctrl-icon {
+  filter: invert(1);
 }
 
 /* Dual-thumb range slider: stack two transparent-track inputs, only thumbs are interactive */
@@ -35,34 +109,36 @@ body {
 
 .dual-range::-webkit-slider-runnable-track {
   height: 4px;
-  background: #d1d5db;
+  background: transparent;
   border-radius: 2px;
 }
 
 .dual-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   pointer-events: auto;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: #2563eb;
-  border: 2px solid white;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
-  margin-top: -5px;
+  background: var(--accent);
+  border: 3px solid #0d0d14;
+  box-shadow: 0 0 0 1px var(--panel-border), 0 2px 8px rgba(139, 124, 246, 0.5);
+  cursor: pointer;
+  margin-top: -6px;
 }
 
 .dual-range::-moz-range-track {
   height: 4px;
-  background: #d1d5db;
+  background: transparent;
   border-radius: 2px;
 }
 
 .dual-range::-moz-range-thumb {
   pointer-events: auto;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: #2563eb;
-  border: 2px solid white;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.4);
+  background: var(--accent);
+  border: 3px solid #0d0d14;
+  box-shadow: 0 0 0 1px var(--panel-border), 0 2px 8px rgba(139, 124, 246, 0.5);
+  cursor: pointer;
 }

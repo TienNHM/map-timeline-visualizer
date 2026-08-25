@@ -5,7 +5,34 @@ interface StatsPanelProps {
 }
 
 function formatKm(meters: number): string {
-  return `${(meters / 1000).toFixed(1)} km`;
+  return `${(meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} km`;
+}
+
+const ACTIVITY_COLORS: Record<string, string> = {
+  WALKING: "#34d3a8",
+  RUNNING: "#34d3a8",
+  CYCLING: "#a3e635",
+  MOTORCYCLING: "#f97316",
+  IN_PASSENGER_VEHICLE: "#8b7cf6",
+  IN_BUS: "#f5b83d",
+  IN_TAXI: "#f5b83d",
+  IN_TRAIN: "#ec6cb9",
+  IN_SUBWAY: "#ec6cb9",
+  IN_TRAM: "#ec6cb9",
+  IN_FERRY: "#38bdf8",
+  FLYING: "#38bdf8",
+  SAILING: "#38bdf8",
+  SKIING: "#38bdf8",
+  UNKNOWN: "#6b6b76",
+};
+
+const FALLBACK_PALETTE = ["#8b7cf6", "#34d3a8", "#f5b83d", "#ec6cb9", "#38bdf8", "#a3e635"];
+
+function activityColor(activity: string): string {
+  if (ACTIVITY_COLORS[activity]) return ACTIVITY_COLORS[activity];
+  let hash = 0;
+  for (let i = 0; i < activity.length; i++) hash = (hash * 31 + activity.charCodeAt(i)) >>> 0;
+  return FALLBACK_PALETTE[hash % FALLBACK_PALETTE.length];
 }
 
 function formatActivity(activity: string): string {
@@ -16,55 +43,115 @@ function formatActivity(activity: string): string {
     .join(" ");
 }
 
+const PLACE_LABELS: Record<string, string> = {
+  UNKNOWN: "Other place",
+  HOME: "Home",
+  INFERRED_HOME: "Home",
+  WORK: "Work",
+  INFERRED_WORK: "Work",
+  ALIASED_LOCATION: "Saved place",
+  SEARCHED_ADDRESS: "Searched address",
+};
+
+function formatPlaceLabel(label: string): string {
+  if (PLACE_LABELS[label]) return PLACE_LABELS[label];
+  if (/^[A-Z_]+$/.test(label)) return formatActivity(label);
+  return label;
+}
+
+function StatIcon({ path }: { path: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      className="h-4.5 w-4.5"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d={path} />
+    </svg>
+  );
+}
+
+const ICON_PATHS = {
+  route: "M4 19c3 0 3-6 6-6s3 6 6 6M4 5c3 0 3 6 6 6s3-6 6-6",
+  trip: "M13 5l7 7-7 7M4 12h16",
+  pin: "M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21ZM12 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+  layers: "m12 3 8 4-8 4-8-4 8-4Zm-8 8 8 4 8-4M4 15l8 4 8-4",
+};
+
 export default function StatsPanel({ stats }: StatsPanelProps) {
   const activityEntries = Object.entries(stats.distanceByActivity).sort(
     (a, b) => b[1] - a[1]
   );
+  const maxActivityMeters = activityEntries[0]?.[1] || 1;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Total distance" value={formatKm(stats.totalDistanceMeters)} />
-        <StatCard label="Trips" value={String(stats.tripCount)} />
-        <StatCard label="Places visited" value={String(stats.visitCount)} />
-        <StatCard
-          label="Unique places"
-          value={String(stats.placeVisitCounts.length)}
-        />
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard icon={ICON_PATHS.route} label="Total distance" value={formatKm(stats.totalDistanceMeters)} />
+        <StatCard icon={ICON_PATHS.trip} label="Trips" value={stats.tripCount.toLocaleString()} />
+        <StatCard icon={ICON_PATHS.pin} label="Places visited" value={stats.visitCount.toLocaleString()} />
+        <StatCard icon={ICON_PATHS.layers} label="Unique places" value={stats.placeVisitCounts.length.toLocaleString()} />
       </div>
 
       {activityEntries.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold mb-2">Distance by activity</h3>
-          <div className="flex flex-col gap-1">
-            {activityEntries.map(([activity, meters]) => (
-              <div key={activity} className="flex items-center gap-2 text-sm">
-                <span className="w-32 shrink-0 text-gray-600 dark:text-gray-400">
-                  {formatActivity(activity)}
-                </span>
-                <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded h-2 overflow-hidden">
-                  <div
-                    className="bg-blue-500 h-2"
-                    style={{
-                      width: `${(meters / (activityEntries[0][1] || 1)) * 100}%`,
-                    }}
+          <h3 className="mb-3 text-xs font-semibold tracking-wide text-(--text-muted) uppercase">
+            Distance by activity
+          </h3>
+          <div className="flex flex-col gap-2.5">
+            {activityEntries.map(([activity, meters]) => {
+              const color = activityColor(activity);
+              return (
+                <div key={activity} className="flex items-center gap-3 text-sm">
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ background: color, boxShadow: `0 0 8px ${color}80` }}
                   />
+                  <span className="w-30 shrink-0 truncate text-(--text-muted)">
+                    {formatActivity(activity)}
+                  </span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/8">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${(meters / maxActivityMeters) * 100}%`,
+                        background: color,
+                      }}
+                    />
+                  </div>
+                  <span className="stat-number w-16 shrink-0 text-right text-(--text)">
+                    {formatKm(meters)}
+                  </span>
                 </div>
-                <span className="w-16 text-right">{formatKm(meters)}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
       {stats.placeVisitCounts.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold mb-2">Top places</h3>
-          <ol className="flex flex-col gap-1 text-sm">
-            {stats.placeVisitCounts.slice(0, 8).map((p) => (
-              <li key={p.label} className="flex justify-between">
-                <span className="truncate">{p.label}</span>
-                <span className="text-gray-500">{p.count} visits</span>
+          <h3 className="mb-3 text-xs font-semibold tracking-wide text-(--text-muted) uppercase">
+            Top places
+          </h3>
+          <ol className="flex flex-col gap-1">
+            {stats.placeVisitCounts.slice(0, 8).map((p, i) => (
+              <li
+                key={p.label}
+                className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-white/5"
+              >
+                <span className="flex items-center gap-2.5 truncate">
+                  <span className="stat-number w-5 shrink-0 text-xs text-(--text-faint)">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="truncate text-(--text)">{formatPlaceLabel(p.label)}</span>
+                </span>
+                <span className="stat-number shrink-0 text-xs text-(--text-muted)">
+                  {p.count} {p.count === 1 ? "visit" : "visits"}
+                </span>
               </li>
             ))}
           </ol>
@@ -74,11 +161,16 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-lg font-semibold">{value}</div>
+    <div className="glass-panel flex flex-col gap-2.5 p-4">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-(--panel-border) bg-white/5 text-(--accent)">
+        <StatIcon path={icon} />
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <div className="stat-number text-xl font-semibold text-(--text)">{value}</div>
+        <div className="text-xs text-(--text-muted)">{label}</div>
+      </div>
     </div>
   );
 }

@@ -12,6 +12,22 @@ function toDateKey(iso: string): string {
   return iso.slice(0, 10);
 }
 
+function Logo() {
+  return (
+    <div
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-lg"
+      style={{
+        background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
+        boxShadow: "0 4px 20px -4px rgba(139, 124, 246, 0.5)",
+      }}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13 6-3m-6 3V7m6 10 4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7" />
+      </svg>
+    </div>
+  );
+}
+
 export default function Home() {
   const [data, setData] = useState<TimelineData | null>(null);
   const [startIndex, setStartIndex] = useState(0);
@@ -73,27 +89,40 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
-        <h1 className="text-xl font-semibold">Map Timeline Visualizer</h1>
-        <p className="text-sm text-gray-500">
-          Import your Google Maps Timeline export to see your journeys, places, and stats — all processed locally in your browser.
-        </p>
+    <div className="flex min-h-screen flex-col">
+      <header className="flex items-center justify-between gap-4 border-b border-(--panel-border) px-6 py-4">
+        <div className="flex items-center gap-3">
+          <Logo />
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight text-(--text)">
+              Map <span className="text-gradient">Timeline</span> Visualizer
+            </h1>
+            <p className="text-xs text-(--text-muted)">
+              Import your Google Maps Timeline export to see journeys, places, and stats.
+            </p>
+          </div>
+        </div>
+        <div className="hidden items-center gap-1.5 rounded-full border border-(--panel-border) bg-white/5 px-3 py-1.5 text-xs text-(--text-muted) sm:flex">
+          <span className="h-1.5 w-1.5 rounded-full bg-(--accent-2)" style={{ boxShadow: "0 0 6px var(--accent-2)" }} />
+          100% local & private
+        </div>
       </header>
 
       {!data ? (
-        <main className="flex-1 flex items-center justify-center p-6">
+        <main className="flex flex-1 items-center justify-center p-6">
           <div className="w-full max-w-xl">
             <FileUpload onLoaded={handleLoaded} />
           </div>
         </main>
       ) : (
-        <main className="flex-1 flex flex-col lg:flex-row gap-4 p-4">
-          <div className="flex-1 flex flex-col gap-4 min-h-100">
-            <div className="flex-1 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800">
-              <MapView segments={filteredSegments} rawTrack={filteredRawTrack} />
+        <main className="flex flex-1 flex-col gap-4 p-4 lg:flex-row">
+          <div className="flex min-h-100 flex-1 flex-col gap-4">
+            <div className="glass-panel flex-1 overflow-hidden p-1.5">
+              <div className="h-full w-full overflow-hidden rounded-[0.9rem]">
+                <MapView segments={filteredSegments} rawTrack={filteredRawTrack} />
+              </div>
             </div>
-            <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+            <div className="glass-panel p-4">
               <TimelineSlider
                 dates={dates}
                 startIndex={startIndex}
@@ -105,15 +134,15 @@ export default function Home() {
               />
             </div>
           </div>
-          <aside className="w-full lg:w-96 flex flex-col gap-4">
-            <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+          <aside className="flex w-full flex-col gap-4 lg:w-96">
+            <div className="glass-panel p-4">
               <StatsPanel stats={stats} />
             </div>
             <button
               onClick={() => setData(null)}
-              className="text-sm text-blue-600 hover:underline self-start"
+              className="self-start text-sm text-(--text-muted) transition-colors hover:text-(--text)"
             >
-              Import a different file
+              ← Import a different file
             </button>
           </aside>
         </main>

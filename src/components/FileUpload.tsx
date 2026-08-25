@@ -49,12 +49,17 @@ export default function FileUpload({ onLoaded }: FileUploadProps) {
         if (file) handleFile(file);
       }}
       onClick={() => inputRef.current?.click()}
-      className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-10 text-center cursor-pointer transition-colors ${
+      className={`glass-panel group relative flex cursor-pointer flex-col items-center gap-4 overflow-hidden px-10 py-16 text-center transition-all duration-300 ${
         isDragging
-          ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
-          : "border-gray-300 dark:border-gray-700 hover:border-blue-400"
+          ? "border-(--accent) bg-(--panel-strong) scale-[1.01]"
+          : "hover:border-white/20 hover:bg-(--panel-strong)"
       }`}
     >
+      <div
+        className="pointer-events-none absolute -top-24 left-1/2 h-48 w-72 -translate-x-1/2 rounded-full opacity-20 blur-3xl transition-opacity group-hover:opacity-30"
+        style={{ background: "linear-gradient(90deg, var(--accent), var(--accent-2))" }}
+      />
+
       <input
         ref={inputRef}
         type="file"
@@ -65,15 +70,44 @@ export default function FileUpload({ onLoaded }: FileUploadProps) {
           if (file) handleFile(file);
         }}
       />
-      <p className="text-sm font-medium">
-        Drop your Google Maps Timeline export (JSON) here, or click to browse
-      </p>
-      <p className="text-xs text-gray-500">
-        Supports the on-device Timeline export, legacy Semantic Location
-        History, and raw Records.json. Nothing is uploaded — parsing happens
-        entirely in your browser.
-      </p>
-      {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-(--panel-border) bg-white/5 text-(--accent)">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          className="h-7 w-7"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 3v12m0-12 4 4m-4-4-4 4M4 17.5v.5A2 2 0 0 0 6 20h12a2 2 0 0 0 2-2v-.5"
+          />
+        </svg>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <p className="text-base font-medium text-(--text)">
+          Drop your Google Maps Timeline export here
+        </p>
+        <p className="max-w-md text-sm text-(--text-muted)">
+          or click to browse for a JSON file — the on-device Timeline export,
+          legacy Semantic Location History, or raw Records.json all work.
+        </p>
+      </div>
+
+      <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-white/5 px-3 py-1 text-xs text-(--text-muted)">
+        <span className="h-1.5 w-1.5 rounded-full bg-(--accent-2)" />
+        Nothing leaves your device — parsing happens entirely in your browser
+      </div>
+
+      {error && (
+        <p className="max-w-md rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
