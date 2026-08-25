@@ -89,8 +89,8 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-(--panel-border) px-4 py-3 sm:px-6 sm:py-4">
+    <div className="flex min-h-screen flex-col lg:h-screen lg:overflow-hidden">
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-(--panel-border) px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center gap-3">
           <Logo />
           <div>
@@ -115,14 +115,14 @@ export default function Home() {
           </div>
         </main>
       ) : (
-        <main className="flex flex-1 flex-col gap-3 p-3 sm:gap-4 sm:p-4 lg:flex-row">
-          <div className="flex min-h-80 flex-1 flex-col gap-3 sm:min-h-100 sm:gap-4">
+        <main className="flex flex-1 flex-col gap-3 p-3 sm:gap-4 sm:p-4 lg:min-h-0 lg:flex-row lg:overflow-hidden">
+          <div className="flex min-h-80 flex-1 flex-col gap-3 sm:min-h-100 sm:gap-4 lg:min-h-0">
             <div className="glass-panel flex-1 overflow-hidden p-1.5">
               <div className="h-full w-full overflow-hidden rounded-[0.9rem]">
                 <MapView segments={filteredSegments} rawTrack={filteredRawTrack} />
               </div>
             </div>
-            <div className="glass-panel p-3 sm:p-4">
+            <div className="glass-panel shrink-0 p-3 sm:p-4">
               <TimelineSlider
                 dates={dates}
                 startIndex={startIndex}
@@ -134,7 +134,7 @@ export default function Home() {
               />
             </div>
           </div>
-          <aside className="flex w-full flex-col gap-3 sm:gap-4 lg:w-96">
+          <aside className="scroll-thin flex w-full flex-col gap-3 sm:gap-4 lg:w-96 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             <div className="glass-panel p-3 sm:p-4">
               <StatsPanel stats={stats} />
             </div>
