@@ -3,12 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "node scripts/copy-maplibre-worker.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "date-fns": "^4.4.0",
+    "maplibre-gl": "^6.6.0",
     "next": "16.3.2",
     "react": "19.2.8",
     "react-dom": "19.2.8"
