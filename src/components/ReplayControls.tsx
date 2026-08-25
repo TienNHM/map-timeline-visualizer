@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TimelineSegment } from "@/lib/timeline/types";
-import { advanceReplay, buildReplayTrack, ReplayFrame } from "@/lib/timeline/replay";
+import { advanceReplay, buildReplayTrack, CAMERA_MODES, CameraMode, ReplayFrame } from "@/lib/timeline/replay";
 
 /** Wall-clock time a full replay takes at 1x speed, regardless of how long the trip actually spanned. */
 const BASE_PLAYBACK_MS = 20000;
@@ -11,6 +11,8 @@ const SPEEDS = [1, 2, 4, 8] as const;
 interface ReplayControlsProps {
   segments: TimelineSegment[];
   onFrame: (frame: ReplayFrame | null) => void;
+  cameraMode: CameraMode;
+  onCameraModeChange: (mode: CameraMode) => void;
 }
 
 function formatTime(ms: number): string {
@@ -23,7 +25,7 @@ function formatTime(ms: number): string {
   });
 }
 
-export default function ReplayControls({ segments, onFrame }: ReplayControlsProps) {
+export default function ReplayControls({ segments, onFrame, cameraMode, onCameraModeChange }: ReplayControlsProps) {
   const track = useMemo(() => buildReplayTrack(segments), [segments]);
   const startMs = track[0]?.timeMs ?? 0;
   const endMs = track[track.length - 1]?.timeMs ?? 0;
@@ -187,6 +189,22 @@ export default function ReplayControls({ segments, onFrame }: ReplayControlsProp
           <span className="stat-number text-(--text-muted)">{formatTime(currentMs)}</span>
         </div>
       </div>
+
+      <button
+        onClick={() => {
+          const idx = CAMERA_MODES.findIndex((m) => m.id === cameraMode);
+          onCameraModeChange(CAMERA_MODES[(idx + 1) % CAMERA_MODES.length].id);
+        }}
+        title={CAMERA_MODES.find((m) => m.id === cameraMode)?.label}
+        className="hidden shrink-0 items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-2.5 py-1 text-xs text-(--text-muted) transition-colors hover:text-(--text) sm:flex"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5">
+          {cameraMode === "fixed" && <path strokeLinecap="round" strokeLinejoin="round" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v3m0 12v3m9-9h-3M6 12H3" />}
+          {cameraMode === "steady" && <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v4m0 10v4M4.2 6.2l2.9 2.9m9.8 0 2.9-2.9M4.2 17.8l2.9-2.9m9.8 0 2.9 2.9M9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z" />}
+          {cameraMode === "dynamic" && <path strokeLinecap="round" strokeLinejoin="round" d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" />}
+        </svg>
+        {CAMERA_MODES.find((m) => m.id === cameraMode)?.label}
+      </button>
 
       <button
         onClick={() => setSpeed((s) => SPEEDS[(SPEEDS.indexOf(s as (typeof SPEEDS)[number]) + 1) % SPEEDS.length])}

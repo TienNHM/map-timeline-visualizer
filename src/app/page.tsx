@@ -9,7 +9,7 @@ import ThemeSwitcher from "@/components/ThemeSwitcher";
 import ReplayControls from "@/components/ReplayControls";
 import { TimelineData } from "@/lib/timeline/types";
 import { computeStats, segmentsWithinRange } from "@/lib/timeline/stats";
-import { ReplayFrame } from "@/lib/timeline/replay";
+import { CameraMode, ReplayFrame } from "@/lib/timeline/replay";
 
 function toDateKey(iso: string): string {
   return iso.slice(0, 10);
@@ -36,6 +36,7 @@ export default function Home() {
   const [startIndex, setStartIndex] = useState(0);
   const [endIndex, setEndIndex] = useState(0);
   const [replayFrame, setReplayFrame] = useState<ReplayFrame | null>(null);
+  const [cameraMode, setCameraMode] = useState<CameraMode>("steady");
 
   const dates = useMemo(() => {
     if (!data) return [];
@@ -130,6 +131,7 @@ export default function Home() {
                   segments={filteredSegments}
                   rawTrack={filteredRawTrack}
                   replayFrame={replayFrame}
+                  cameraMode={cameraMode}
                 />
               </div>
             </div>
@@ -143,7 +145,12 @@ export default function Home() {
                   setEndIndex(e);
                 }}
               />
-              <ReplayControls segments={filteredSegments} onFrame={setReplayFrame} />
+              <ReplayControls
+                segments={filteredSegments}
+                onFrame={setReplayFrame}
+                cameraMode={cameraMode}
+                onCameraModeChange={setCameraMode}
+              />
             </div>
           </div>
           <aside className="scroll-thin flex w-full flex-col gap-3 sm:gap-4 lg:w-96 lg:min-h-0 lg:overflow-y-auto lg:pr-1">

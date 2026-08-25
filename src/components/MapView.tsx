@@ -7,7 +7,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { TimelineSegment, TrackPoint } from "@/lib/timeline/types";
 import { boundsOf } from "@/lib/timeline/geo";
 import { isTrip, isVisit } from "@/lib/timeline/stats";
-import { ReplayFrame } from "@/lib/timeline/replay";
+import { CameraMode, ReplayFrame } from "@/lib/timeline/replay";
 import { useTheme } from "@/components/ThemeProvider";
 import { loadTintedStyle } from "@/lib/mapTint";
 
@@ -22,6 +22,12 @@ interface MapViewProps {
   segments: TimelineSegment[];
   rawTrack?: TrackPoint[];
   replayFrame?: ReplayFrame | null;
+  cameraMode?: CameraMode;
+}
+
+interface DynamicCameraState {
+  zoom: number | null;
+  bearing: number;
 }
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
@@ -32,7 +38,12 @@ interface OverlayColors {
   isLight: boolean;
 }
 
-export default function MapView({ segments, rawTrack = [], replayFrame = null }: MapViewProps) {
+export default function MapView({
+  segments,
+  rawTrack = [],
+  replayFrame = null,
+  cameraMode = "steady",
+}: MapViewProps) {
   const { themeId, isLight, themes } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -42,6 +53,7 @@ export default function MapView({ segments, rawTrack = [], replayFrame = null }:
   const colorsRef = useRef<OverlayColors>(themeColors(themeId, isLight, themes));
   const hasFitRef = useRef(false);
   const styleGenerationRef = useRef(0);
+  const dynamicCamRef = useRef<DynamicCameraState>({ zoom: null, bearing: 0 });
 
   useEffect(() => {
     segmentsRef.current = segments;
@@ -110,8 +122,9 @@ export default function MapView({ segments, rawTrack = [], replayFrame = null }:
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    renderReplayFrame(map, replayFrame, { pan: true });
-  }, [replayFrame]);
+    if (!replayFrame) dynamicCamRef.current.zoom = null;
+    renderReplayFrame(map, replayFrame, { pan: true, cameraMode, dynamicCam: dynamicCamRef.current });
+  }, [replayFrame, cameraMode]);
 
   return (
     <div ref={containerRef} className={`h-full min-h-100 w-full ${isLight ? "" : "map-dark-tiles"}`} />
@@ -208,7 +221,35 @@ function setupOverlayLayers(map: MapLibreMap, colors: OverlayColors) {
   }
 }
 
-function renderReplayFrame(map: MapLibreMap, frame: ReplayFrame | null | undefined, options: { pan: boolean }) {
+const DYNAMIC_ZOOM_BY_ACTIVITY: Record<string, number> = {
+  VISIT: 16,
+  WALKING: 16,
+  RUNNING: 16,
+  CYCLING: 15,
+  MOTORCYCLING: 14,
+  IN_PASSENGER_VEHICLE: 13,
+  IN_TAXI: 13,
+  IN_SUBWAY: 13,
+  IN_TRAIN: 12,
+  IN_BUS: 12,
+  IN_FERRY: 12,
+  SAILING: 12,
+  FLYING: 6,
+};
+const DEFAULT_DYNAMIC_ZOOM = 14;
+/** Per-frame easing factor for the dynamic camera's zoom/bearing smoothing (0-1, higher = snappier). */
+const DYNAMIC_CAMERA_EASE = 0.06;
+
+function lerpAngle(current: number, target: number, factor: number): number {
+  const delta = ((target - current + 540) % 360) - 180;
+  return (current + delta * factor + 360) % 360;
+}
+
+function renderReplayFrame(
+  map: MapLibreMap,
+  frame: ReplayFrame | null | undefined,
+  options: { pan: boolean; cameraMode?: CameraMode; dynamicCam?: DynamicCameraState }
+) {
   const trailSource = map.getSource("replay-trail") as GeoJSONSource | undefined;
   const markerSource = map.getSource("replay-marker") as GeoJSONSource | undefined;
 
@@ -243,12 +284,33 @@ function renderReplayFrame(map: MapLibreMap, frame: ReplayFrame | null | undefin
     ],
   });
 
-  if (options.pan) {
-    // jumpTo (no easing) is deliberate: replay frames already arrive ~60/sec with their
-    // own eased interpolation, so layering map easing on top would fight itself and
-    // read as stutter instead of smooth continuous motion.
-    map.jumpTo({ center: [frame.position.lng, frame.position.lat] });
+  if (!options.pan) return;
+
+  const center: [number, number] = [frame.position.lng, frame.position.lat];
+  const cameraMode = options.cameraMode ?? "steady";
+
+  // jumpTo (no easing) is deliberate throughout: replay frames already arrive ~60/sec
+  // with their own eased interpolation (and, in dynamic mode, their own zoom/bearing
+  // easing below), so layering map easing on top would fight itself and read as
+  // stutter instead of smooth continuous motion.
+  if (cameraMode === "fixed") {
+    return;
   }
+
+  if (cameraMode === "steady" || !options.dynamicCam) {
+    map.jumpTo({ center, bearing: 0 });
+    return;
+  }
+
+  const dynamicCam = options.dynamicCam;
+  if (dynamicCam.zoom === null) dynamicCam.zoom = map.getZoom();
+  const targetZoom = frame.activityType ? DYNAMIC_ZOOM_BY_ACTIVITY[frame.activityType] ?? DEFAULT_DYNAMIC_ZOOM : DEFAULT_DYNAMIC_ZOOM;
+  dynamicCam.zoom += (targetZoom - dynamicCam.zoom) * DYNAMIC_CAMERA_EASE;
+  if (frame.bearing !== undefined) {
+    dynamicCam.bearing = lerpAngle(dynamicCam.bearing, frame.bearing, DYNAMIC_CAMERA_EASE);
+  }
+
+  map.jumpTo({ center, zoom: dynamicCam.zoom, bearing: dynamicCam.bearing });
 }
 
 function renderData(

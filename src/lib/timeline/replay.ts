@@ -1,8 +1,24 @@
 import { LatLng, TimelineSegment } from "./types";
 import { isTrip, isVisit } from "./stats";
 
+/**
+ * "fixed" keeps the camera on the overview framing set before playback started.
+ * "steady" pans to keep the marker centered at a constant zoom.
+ * "dynamic" also eases zoom toward an activity-appropriate level and rotates to
+ * face the direction of travel.
+ */
+export type CameraMode = "fixed" | "steady" | "dynamic";
+
+export const CAMERA_MODES: { id: CameraMode; label: string }[] = [
+  { id: "fixed", label: "Fixed zoom" },
+  { id: "steady", label: "Steady following" },
+  { id: "dynamic", label: "Dynamic following" },
+];
+
 export interface ReplayPoint extends LatLng {
   timeMs: number;
+  /** The trip's activityType (e.g. "WALKING", "IN_BUS"), or "VISIT" while stationary at a place. */
+  activityType?: string;
 }
 
 function toMs(iso: string): number {
@@ -28,9 +44,9 @@ export function buildReplayTrack(segments: TimelineSegment[]): ReplayPoint[] {
       const start = toMs(segment.startTime);
       const end = toMs(segment.endTime);
       if (Number.isNaN(start) || Number.isNaN(end)) continue;
-      points.push({ lat: segment.location.lat, lng: segment.location.lng, timeMs: start });
+      points.push({ lat: segment.location.lat, lng: segment.location.lng, timeMs: start, activityType: "VISIT" });
       if (end > start) {
-        points.push({ lat: segment.location.lat, lng: segment.location.lng, timeMs: end });
+        points.push({ lat: segment.location.lat, lng: segment.location.lng, timeMs: end, activityType: "VISIT" });
       }
       continue;
     }
@@ -47,7 +63,7 @@ export function buildReplayTrack(segments: TimelineSegment[]): ReplayPoint[] {
           : segment.path.length === 1
             ? start
             : start + ((end - start) * i) / (segment.path.length - 1);
-        points.push({ lat: p.lat, lng: p.lng, timeMs });
+        points.push({ lat: p.lat, lng: p.lng, timeMs, activityType: segment.activityType });
       });
     }
   }
@@ -62,6 +78,21 @@ export interface ReplayFrame {
   /** All track points reached so far, in order, including the interpolated current position. */
   trail: LatLng[];
   timeMs: number;
+  /** The activity in effect at this moment — drives dynamic-camera zoom choices. */
+  activityType?: string;
+  /** Compass bearing (0-360) of travel toward the current position, if determinable. */
+  bearing?: number;
+}
+
+function bearingBetween(a: LatLng, b: LatLng): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const toDeg = (rad: number) => (rad * 180) / Math.PI;
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
 
 /**
@@ -98,5 +129,14 @@ export function advanceReplay(
   const trail: LatLng[] = track.slice(0, i + 1).map((p) => ({ lat: p.lat, lng: p.lng }));
   trail.push(position);
 
-  return { frame: { position, trail, timeMs: atMs }, nextIndex: i };
+  const behind = trail[trail.length - 2];
+  const bearing =
+    behind && (behind.lat !== position.lat || behind.lng !== position.lng)
+      ? bearingBetween(behind, position)
+      : undefined;
+
+  return {
+    frame: { position, trail, timeMs: atMs, activityType: current.activityType, bearing },
+    nextIndex: i,
+  };
 }
