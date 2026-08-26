@@ -101,6 +101,28 @@ export default function MapView({
     };
   }, []);
 
+  // MapLibre sizes its canvas from the container's dimensions at creation time and
+  // doesn't re-measure on its own. Without this, any later layout shift that resizes
+  // the container — switching design style (border widths/spacing changing), opening
+  // a dropdown that reflows the page, a window resize — leaves the canvas stretched to
+  // its stale size instead of the container's new one, which reads as a broken/overflowing map.
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const el = containerRef.current;
+    let rafId = 0;
+    const observer = new ResizeObserver(() => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        mapRef.current?.resize();
+      });
+    });
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, []);
+
   useEffect(() => {
     if (mapRef.current) {
       renderData(mapRef.current, segments, rawTrack, { fit: true });
