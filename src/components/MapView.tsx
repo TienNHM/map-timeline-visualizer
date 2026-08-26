@@ -26,6 +26,7 @@ interface MapViewProps {
 }
 
 interface DynamicCameraState {
+  center: [number, number] | null;
   zoom: number | null;
   bearing: number;
 }
@@ -53,7 +54,7 @@ export default function MapView({
   const colorsRef = useRef<OverlayColors>(themeColors(themeId, isLight, themes));
   const hasFitRef = useRef(false);
   const styleGenerationRef = useRef(0);
-  const dynamicCamRef = useRef<DynamicCameraState>({ zoom: null, bearing: 0 });
+  const dynamicCamRef = useRef<DynamicCameraState>({ center: null, zoom: null, bearing: 0 });
 
   useEffect(() => {
     segmentsRef.current = segments;
@@ -145,7 +146,10 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (!replayFrame) dynamicCamRef.current.zoom = null;
+    if (!replayFrame) {
+      dynamicCamRef.current.center = null;
+      dynamicCamRef.current.zoom = null;
+    }
     renderReplayFrame(map, replayFrame, { pan: true, cameraMode, dynamicCam: dynamicCamRef.current });
   }, [replayFrame, cameraMode]);
 
@@ -294,6 +298,13 @@ function zoomForSpeedKmh(speedKmh: number): number {
 const ZOOM_OUT_EASE = 0.1;
 const ZOOM_IN_EASE = 0.045;
 const BEARING_EASE = 0.06;
+// Camera center deliberately lags behind the marker instead of snapping to it every
+// frame — a hard center=marker jumpTo pins the dot dead-center forever, so all the
+// visible motion reads as "the map sliding" rather than "the dot traveling". Easing
+// the center toward the marker lets the dot actually move across the viewport while
+// the map catches up, matching GPS-follow apps (and timelinevisualizer.app's demo).
+const CENTER_EASE_STEADY = 0.035;
+const CENTER_EASE_DYNAMIC = 0.05;
 
 function lerpAngle(current: number, target: number, factor: number): number {
   const delta = ((target - current + 540) % 360) - 180;
@@ -371,12 +382,24 @@ function renderReplayFrame(
     return;
   }
 
-  if (cameraMode === "steady" || !options.dynamicCam) {
+  if (!options.dynamicCam) {
     map.jumpTo({ center, bearing: 0 });
     return;
   }
 
   const dynamicCam = options.dynamicCam;
+  if (dynamicCam.center === null) dynamicCam.center = center;
+  const centerEase = cameraMode === "dynamic" ? CENTER_EASE_DYNAMIC : CENTER_EASE_STEADY;
+  dynamicCam.center = [
+    dynamicCam.center[0] + (center[0] - dynamicCam.center[0]) * centerEase,
+    dynamicCam.center[1] + (center[1] - dynamicCam.center[1]) * centerEase,
+  ];
+
+  if (cameraMode === "steady") {
+    map.jumpTo({ center: dynamicCam.center, bearing: 0 });
+    return;
+  }
+
   if (dynamicCam.zoom === null) dynamicCam.zoom = map.getZoom();
   const targetZoom = zoomForSpeedKmh(frame.speedKmh);
   const zoomEase = targetZoom < dynamicCam.zoom ? ZOOM_OUT_EASE : ZOOM_IN_EASE;
@@ -385,7 +408,7 @@ function renderReplayFrame(
     dynamicCam.bearing = lerpAngle(dynamicCam.bearing, frame.bearing, BEARING_EASE);
   }
 
-  map.jumpTo({ center, zoom: dynamicCam.zoom, bearing: dynamicCam.bearing });
+  map.jumpTo({ center: dynamicCam.center, zoom: dynamicCam.zoom, bearing: dynamicCam.bearing });
 }
 
 function renderData(
