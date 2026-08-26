@@ -156,8 +156,17 @@ export default function MapView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!replayFrame]);
 
+  // The conditional class lives on this wrapper, not the div passed to `new
+  // maplibregl.Map({ container })` below. MapLibre adds its own classes (e.g.
+  // "maplibregl-map", which is what makes `position: relative` apply so the canvas
+  // positions correctly) to that container imperatively, outside React's knowledge.
+  // If React's className prop on that same element ever changed — which it did here
+  // whenever isLight flipped — React would overwrite the whole className attribute
+  // and silently wipe out MapLibre's classes, breaking the canvas's positioning.
   return (
-    <div ref={containerRef} className={`h-full min-h-100 w-full ${isLight ? "" : "map-dark-tiles"}`} />
+    <div className={`h-full w-full ${isLight ? "" : "map-dark-tiles"}`}>
+      <div ref={containerRef} className="h-full min-h-100 w-full" />
+    </div>
   );
 }
 
