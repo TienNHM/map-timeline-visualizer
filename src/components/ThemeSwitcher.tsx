@@ -2,6 +2,7 @@
 
 import { useTheme } from "@/components/ThemeProvider";
 import Dropdown, { DropdownOption } from "@/components/Dropdown";
+import { Icon } from "@/components/Icon";
 
 function Swatch({ colors, size = 18 }: { colors: [string, string]; size?: number }) {
   return (
@@ -32,8 +33,13 @@ export default function ThemeSwitcher() {
       options={options}
       onChange={setThemeId}
       menuLabel="Theme"
-      triggerClassName="flex items-center gap-2 rounded-full border border-(--panel-border) bg-(--panel) px-2.5 py-1.5 text-xs text-(--text-muted) transition-colors hover:text-(--text)"
-      renderTrigger={(current) => current.icon}
+      triggerClassName="flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-2.5 py-1.5 text-xs text-(--text-muted) transition-colors hover:text-(--text)"
+      renderTrigger={(current) => (
+        <>
+          <Icon name="palette" className="h-3.5 w-3.5 shrink-0" />
+          {current.icon}
+        </>
+      )}
     />
   );
 }

@@ -2,6 +2,7 @@
 
 import { useDesignStyle } from "@/components/DesignStyleProvider";
 import Dropdown, { DropdownOption } from "@/components/Dropdown";
+import { Icon } from "@/components/Icon";
 
 function StylePreview({ id, size = 18 }: { id: string; size?: number }) {
   if (id === "brutalism") {
@@ -46,8 +47,13 @@ export default function StyleSwitcher() {
       options={options}
       onChange={setStyleId}
       menuLabel="Style"
-      triggerClassName="flex items-center gap-2 rounded-full border border-(--panel-border) bg-(--panel) px-2.5 py-1.5 text-xs text-(--text-muted) transition-colors hover:text-(--text)"
-      renderTrigger={(current) => <StylePreview id={current.value} />}
+      triggerClassName="flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-2.5 py-1.5 text-xs text-(--text-muted) transition-colors hover:text-(--text)"
+      renderTrigger={(current) => (
+        <>
+          <Icon name="shapes" className="h-3.5 w-3.5 shrink-0" />
+          <StylePreview id={current.value} />
+        </>
+      )}
     />
   );
 }
