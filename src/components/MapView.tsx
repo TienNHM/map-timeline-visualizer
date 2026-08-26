@@ -395,15 +395,20 @@ function renderReplayFrame(
     dynamicCam.center[1] + (center[1] - dynamicCam.center[1]) * centerEase,
   ];
 
-  if (cameraMode === "steady") {
-    map.jumpTo({ center: dynamicCam.center, bearing: 0 });
-    return;
-  }
-
+  // Zoom eases toward a speed-appropriate level in both steady and dynamic modes — a
+  // constant zoom can't show a leg that jumps far between two sparsely-sampled GPS
+  // points (a real-world-fast leg), so it needs to pull back the same way dynamic's
+  // camera does. Steady just skips the bearing rotation, keeping north-up framing.
   if (dynamicCam.zoom === null) dynamicCam.zoom = map.getZoom();
   const targetZoom = zoomForSpeedKmh(frame.speedKmh);
   const zoomEase = targetZoom < dynamicCam.zoom ? ZOOM_OUT_EASE : ZOOM_IN_EASE;
   dynamicCam.zoom += (targetZoom - dynamicCam.zoom) * zoomEase;
+
+  if (cameraMode === "steady") {
+    map.jumpTo({ center: dynamicCam.center, zoom: dynamicCam.zoom, bearing: 0 });
+    return;
+  }
+
   if (frame.bearing !== undefined) {
     dynamicCam.bearing = lerpAngle(dynamicCam.bearing, frame.bearing, BEARING_EASE);
   }

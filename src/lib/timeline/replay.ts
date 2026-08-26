@@ -4,9 +4,10 @@ import { haversineDistance } from "./geo";
 
 /**
  * "fixed" keeps the camera on the overview framing set before playback started.
- * "steady" pans to keep the marker centered at a constant zoom.
- * "dynamic" also eases zoom toward an activity-appropriate level and rotates to
- * face the direction of travel.
+ * "steady" pans to keep the marker centered, easing zoom to a speed-appropriate level
+ * (so a fast/far leg between sparse GPS points doesn't run off-screen) but keeping a
+ * fixed north-up bearing.
+ * "dynamic" does the same but also rotates to face the direction of travel.
  */
 export type CameraMode = "fixed" | "steady" | "dynamic";
 
@@ -74,6 +75,88 @@ export function buildReplayTrack(segments: TimelineSegment[]): ReplayPoint[] {
 
 /** Caps how many recent points the drawn trail keeps — see advanceReplay for why. */
 const MAX_TRAIL_POINTS = 300;
+
+export interface ReplayPacing {
+  /** Wall-clock playback ms (at 1x) at which the track reaches point i; same length as track. */
+  cumMs: number[];
+  totalMs: number;
+}
+
+// A single leg's *real* duration, spread proportionally across the whole replay, can compress
+// to a fraction of a frame once the import spans months (e.g. a 2-hour drive is a tiny sliver
+// of a 1.5-year timeline) — the marker would teleport between two far-apart points instead of
+// visibly traveling. Flooring each leg's playback time by its real-world distance keeps big
+// jumps on screen long enough to actually watch, like a real GPS tracker replaying a route.
+const MIN_LEG_MS_PER_KM = 40;
+const MAX_LEG_STRETCH_MS = 2200;
+
+/**
+ * Builds a wall-clock (1x-speed) playback schedule for a track: each leg gets at least
+ * `basePlaybackMs`'s proportional share of its real duration, floored by a minimum tied to
+ * the leg's geographic distance so sparse, far-apart GPS pings stay visible. The resulting
+ * total can run longer than `basePlaybackMs` when legs needed stretching.
+ */
+export function buildReplayPacing(track: ReplayPoint[], basePlaybackMs: number): ReplayPacing {
+  if (track.length < 2) return { cumMs: track.map(() => 0), totalMs: 0 };
+  const spanMs = Math.max(track[track.length - 1].timeMs - track[0].timeMs, 1);
+  const cumMs = [0];
+  for (let i = 0; i < track.length - 1; i++) {
+    const a = track[i];
+    const b = track[i + 1];
+    const naturalMs = ((b.timeMs - a.timeMs) / spanMs) * basePlaybackMs;
+    const distanceKm = haversineDistance(a, b) / 1000;
+    const minMs = Math.min(distanceKm * MIN_LEG_MS_PER_KM, MAX_LEG_STRETCH_MS);
+    cumMs.push(cumMs[i] + Math.max(naturalMs, minMs));
+  }
+  return { cumMs, totalMs: cumMs[cumMs.length - 1] };
+}
+
+/**
+ * Maps elapsed wall-clock playback progress (ms, at 1x — the caller applies the speed
+ * multiplier before calling) to the "virtual" timeline timestamp advanceReplay expects,
+ * walking the pacing schedule forward from a known cursor.
+ */
+export function pacingToAtMs(
+  track: ReplayPoint[],
+  pacing: ReplayPacing,
+  playbackMs: number,
+  fromIndex: number
+): { atMs: number; nextIndex: number } {
+  if (track.length === 0) return { atMs: 0, nextIndex: 0 };
+
+  let i = fromIndex;
+  while (i + 1 < track.length && pacing.cumMs[i + 1] <= playbackMs) {
+    i += 1;
+  }
+
+  const current = track[i];
+  const next = track[i + 1];
+  if (!next) return { atMs: current.timeMs, nextIndex: i };
+
+  const legStart = pacing.cumMs[i];
+  const legEnd = pacing.cumMs[i + 1];
+  const fraction = legEnd > legStart ? Math.min(1, Math.max(0, (playbackMs - legStart) / (legEnd - legStart))) : 1;
+  const atMs = current.timeMs + fraction * (next.timeMs - current.timeMs);
+  return { atMs, nextIndex: i };
+}
+
+/** Inverse of pacingToAtMs, for keeping the wall-clock playback cursor in sync after the
+ * user scrubs the (real-time) progress slider directly to a timestamp. */
+export function atMsToPlaybackMs(track: ReplayPoint[], pacing: ReplayPacing, atMs: number): number {
+  if (track.length === 0) return 0;
+
+  let i = 0;
+  while (i + 1 < track.length && track[i + 1].timeMs <= atMs) {
+    i += 1;
+  }
+
+  const current = track[i];
+  const next = track[i + 1];
+  if (!next || next.timeMs <= current.timeMs) return pacing.cumMs[i] ?? 0;
+
+  const fraction = Math.min(1, Math.max(0, (atMs - current.timeMs) / (next.timeMs - current.timeMs)));
+  return pacing.cumMs[i] + fraction * (pacing.cumMs[i + 1] - pacing.cumMs[i]);
+}
 
 export interface ReplayFrame {
   position: LatLng;

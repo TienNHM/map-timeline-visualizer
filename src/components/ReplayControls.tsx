@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TimelineSegment } from "@/lib/timeline/types";
-import { advanceReplay, buildReplayTrack, CAMERA_MODE_IDS, CameraMode, ReplayFrame } from "@/lib/timeline/replay";
+import {
+  advanceReplay,
+  atMsToPlaybackMs,
+  buildReplayPacing,
+  buildReplayTrack,
+  CAMERA_MODE_IDS,
+  CameraMode,
+  pacingToAtMs,
+  ReplayFrame,
+} from "@/lib/timeline/replay";
 import Dropdown, { DropdownOption } from "@/components/Dropdown";
 import { Icon, IconName } from "@/components/Icon";
 import { useLocale } from "@/components/LocaleProvider";
@@ -44,11 +53,11 @@ function buildCameraModeOptions(t: Translations): DropdownOption<CameraMode>[] {
   }));
 }
 
-function buildSpeedOptions(t: Translations): DropdownOption<string>[] {
+function buildSpeedOptions(t: Translations, totalPlaybackMs: number): DropdownOption<string>[] {
   return SPEEDS.map((s) => ({
     value: String(s),
     label: `${s}x ${t.replay.speedLabel}`,
-    description: `${t.replay.fullReplayTakes}${(BASE_PLAYBACK_MS / 1000 / s).toLocaleString(undefined, { maximumFractionDigits: 1 })}s`,
+    description: `${t.replay.fullReplayTakes}${(totalPlaybackMs / 1000 / s).toLocaleString(undefined, { maximumFractionDigits: 1 })}s`,
   }));
 }
 
@@ -56,8 +65,9 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
   const { locale, t } = useLocale();
   const localeTag = locale === "vi" ? "vi-VN" : "en-US";
   const cameraModeOptions = useMemo(() => buildCameraModeOptions(t), [t]);
-  const speedOptions = useMemo(() => buildSpeedOptions(t), [t]);
   const track = useMemo(() => buildReplayTrack(segments), [segments]);
+  const pacing = useMemo(() => buildReplayPacing(track, BASE_PLAYBACK_MS), [track]);
+  const speedOptions = useMemo(() => buildSpeedOptions(t, pacing.totalMs), [t, pacing]);
   const startMs = track[0]?.timeMs ?? 0;
   const endMs = track[track.length - 1]?.timeMs ?? 0;
   const spanMs = Math.max(endMs - startMs, 1);
@@ -66,7 +76,7 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
   const [progress, setProgress] = useState(0);
   const [speed, setSpeed] = useState<number>(SPEEDS[0]);
 
-  const simMsRef = useRef(startMs);
+  const playbackMsRef = useRef(0);
   const cursorRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const lastFrameTimeRef = useRef(0);
@@ -90,7 +100,7 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsPlaying(false);
     setProgress(0);
-    simMsRef.current = startMs;
+    playbackMsRef.current = 0;
     cursorRef.current = 0;
     onFrame(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -102,11 +112,11 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
     const dtWall = lastFrameTimeRef.current ? now - lastFrameTimeRef.current : 0;
     lastFrameTimeRef.current = now;
 
-    const deltaSim = (spanMs * dtWall * speedRef.current) / BASE_PLAYBACK_MS;
-    simMsRef.current += deltaSim;
+    playbackMsRef.current += dtWall * speedRef.current;
 
-    if (simMsRef.current >= endMs) {
-      const result = advanceReplay(track, endMs, cursorRef.current);
+    if (playbackMsRef.current >= pacing.totalMs) {
+      const { atMs } = pacingToAtMs(track, pacing, pacing.totalMs, cursorRef.current);
+      const result = advanceReplay(track, atMs, cursorRef.current);
       if (result) onFrame(result.frame);
       setProgress(1);
       clearTimer();
@@ -114,11 +124,12 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
       return;
     }
 
-    const result = advanceReplay(track, simMsRef.current, cursorRef.current);
+    const { atMs, nextIndex } = pacingToAtMs(track, pacing, playbackMsRef.current, cursorRef.current);
+    cursorRef.current = nextIndex;
+    const result = advanceReplay(track, atMs, nextIndex);
     if (result) {
-      cursorRef.current = result.nextIndex;
       onFrame(result.frame);
-      setProgress((simMsRef.current - startMs) / spanMs);
+      setProgress((atMs - startMs) / spanMs);
     }
 
     rafRef.current = requestAnimationFrame(tick);
@@ -131,8 +142,8 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
       setIsPlaying(false);
       return;
     }
-    if (simMsRef.current >= endMs) {
-      simMsRef.current = startMs;
+    if (playbackMsRef.current >= pacing.totalMs) {
+      playbackMsRef.current = 0;
       cursorRef.current = 0;
       setProgress(0);
     }
@@ -144,7 +155,7 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
   function handleRestart() {
     clearTimer();
     setIsPlaying(false);
-    simMsRef.current = startMs;
+    playbackMsRef.current = 0;
     cursorRef.current = 0;
     setProgress(0);
     onFrame(null);
@@ -154,13 +165,10 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
     clearTimer();
     setIsPlaying(false);
     const target = startMs + fraction * spanMs;
-    simMsRef.current = target;
-    cursorRef.current = 0;
     const result = advanceReplay(track, target, 0);
-    if (result) {
-      cursorRef.current = result.nextIndex;
-      onFrame(result.frame);
-    }
+    cursorRef.current = result?.nextIndex ?? 0;
+    playbackMsRef.current = atMsToPlaybackMs(track, pacing, target);
+    if (result) onFrame(result.frame);
     setProgress(fraction);
   }
 
