@@ -242,3 +242,76 @@ body::before {
     height: 24px;
   }
 }
+
+/* ==========================================================================
+   Brutalism design style — an alternate UI skin selectable independently of
+   color theme (see StyleSwitcher). Flattens every corner, swaps blur/gradient
+   for flat color and hard offset shadows, and gives panels/buttons/inputs a
+   thick, high-contrast border. Scoped entirely under [data-style="brutalism"]
+   so it composes with any of the six color themes.
+   ========================================================================== */
+:root[data-style="brutalism"] * {
+  border-radius: 0 !important;
+}
+
+:root[data-style="brutalism"] body::before {
+  content: none;
+}
+
+:root[data-style="brutalism"] .glass-panel,
+:root[data-style="brutalism"] .dropdown-menu {
+  background: var(--bg);
+  backdrop-filter: none;
+  border-width: 3px;
+  border-style: solid;
+  border-color: var(--text);
+  box-shadow: 6px 6px 0 0 var(--text);
+}
+
+:root[data-style="brutalism"] button,
+:root[data-style="brutalism"] input,
+:root[data-style="brutalism"] select {
+  border-width: 2px;
+  border-style: solid;
+  border-color: var(--text);
+}
+
+:root[data-style="brutalism"] .text-gradient {
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  -webkit-text-fill-color: var(--accent);
+  color: var(--accent);
+  font-weight: 800;
+}
+
+:root[data-style="brutalism"] .brand-mark,
+:root[data-style="brutalism"] .accent-fill {
+  background: var(--accent) !important;
+  box-shadow: none !important;
+  border: 2px solid var(--text);
+}
+
+:root[data-style="brutalism"] h1 {
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+
+:root[data-style="brutalism"] .map-dark-tiles .maplibregl-ctrl-group {
+  background: var(--bg) !important;
+  backdrop-filter: none;
+  border-width: 2px;
+  border-style: solid;
+  border-color: var(--text);
+}
+
+:root[data-style="brutalism"] .scroll-thin::-webkit-scrollbar-thumb {
+  border-radius: 0;
+}
+
+:root[data-style="brutalism"] .dual-range::-webkit-slider-thumb,
+:root[data-style="brutalism"] .dual-range::-moz-range-thumb {
+  border-radius: 0;
+  border-width: 2px;
+  box-shadow: 2px 2px 0 0 var(--text);
+}

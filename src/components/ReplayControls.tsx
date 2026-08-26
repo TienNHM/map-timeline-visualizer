@@ -164,7 +164,7 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
       <button
         onClick={handlePlayPause}
         aria-label={isPlaying ? "Pause replay" : "Play replay"}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-transform active:scale-95"
+        className="accent-fill flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-transform active:scale-95"
         style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-2))" }}
       >
         <Icon name={isPlaying ? "pause" : "play"} className="h-4 w-4" />
@@ -187,7 +187,7 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
           }}
         >
           <div
-            className="h-full rounded-full"
+            className="accent-fill h-full rounded-full"
             style={{
               width: `${progress * 100}%`,
               background: "linear-gradient(90deg, var(--accent), var(--accent-2))",

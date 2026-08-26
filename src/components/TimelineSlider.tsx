@@ -48,7 +48,7 @@ export default function TimelineSlider({
       <div className="relative h-6">
         <div className="absolute top-1/2 h-1 w-full -translate-y-1/2 rounded-full bg-(--panel-border)" />
         <div
-          className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full"
+          className="accent-fill absolute top-1/2 h-1 -translate-y-1/2 rounded-full"
           style={{
             left: `${startPct}%`,
             width: `${endPct - startPct}%`,

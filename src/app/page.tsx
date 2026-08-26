@@ -6,6 +6,7 @@ import MapView from "@/components/MapView";
 import TimelineSlider from "@/components/TimelineSlider";
 import StatsPanel from "@/components/StatsPanel";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
+import StyleSwitcher from "@/components/StyleSwitcher";
 import ReplayControls from "@/components/ReplayControls";
 import AccuracyFilter from "@/components/AccuracyFilter";
 import { TimelineData } from "@/lib/timeline/types";
@@ -20,7 +21,7 @@ function toDateKey(iso: string): string {
 function Logo() {
   return (
     <div
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-lg"
+      className="brand-mark flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-lg"
       style={{
         background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
         boxShadow: "0 4px 20px -4px rgba(139, 124, 246, 0.5)",
@@ -120,6 +121,7 @@ export default function Home() {
             <span className="h-1.5 w-1.5 rounded-full bg-(--accent-2)" style={{ boxShadow: "0 0 6px var(--accent-2)" }} />
             100% local & private
           </div>
+          <StyleSwitcher />
           <ThemeSwitcher />
         </div>
       </header>
