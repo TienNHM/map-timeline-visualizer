@@ -7,8 +7,11 @@ import TimelineSlider from "@/components/TimelineSlider";
 import StatsPanel from "@/components/StatsPanel";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import StyleSwitcher from "@/components/StyleSwitcher";
+import LocaleSwitcher from "@/components/LocaleSwitcher";
 import ReplayControls from "@/components/ReplayControls";
 import AccuracyFilter from "@/components/AccuracyFilter";
+import { Icon } from "@/components/Icon";
+import { useLocale } from "@/components/LocaleProvider";
 import { TimelineData } from "@/lib/timeline/types";
 import { computeStats, segmentsWithinRange } from "@/lib/timeline/stats";
 import { CameraMode, ReplayFrame } from "@/lib/timeline/replay";
@@ -35,6 +38,7 @@ function Logo() {
 }
 
 export default function Home() {
+  const { t } = useLocale();
   const [data, setData] = useState<TimelineData | null>(null);
   const [startIndex, setStartIndex] = useState(0);
   const [endIndex, setEndIndex] = useState(0);
@@ -109,20 +113,30 @@ export default function Home() {
           <Logo />
           <div>
             <h1 className="text-base font-semibold tracking-tight text-(--text) sm:text-lg">
-              Map <span className="text-gradient">Timeline</span> Visualizer
+              {t.header.titlePrefix}
+              <span className="text-gradient">{t.header.titleAccent}</span>
+              {t.header.titleSuffix}
             </h1>
-            <p className="hidden text-xs text-(--text-muted) sm:block">
-              Import your Google Maps Timeline export to see journeys, places, and stats.
-            </p>
+            <p className="hidden text-xs text-(--text-muted) sm:block">{t.header.subtitle}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="hidden items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-3 py-1.5 text-xs text-(--text-muted) md:flex">
             <span className="h-1.5 w-1.5 rounded-full bg-(--accent-2)" style={{ boxShadow: "0 0 6px var(--accent-2)" }} />
-            100% local & private
+            {t.header.privacyBadge}
           </div>
           <StyleSwitcher />
           <ThemeSwitcher />
+          <LocaleSwitcher />
+          {data && (
+            <button
+              onClick={() => setData(null)}
+              className="flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-3 py-1.5 text-xs text-(--text-muted) transition-colors hover:text-(--text)"
+            >
+              <Icon name="upload" className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">{t.header.importButton}</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -168,12 +182,6 @@ export default function Home() {
             <div className="glass-panel p-3 sm:p-4">
               <StatsPanel stats={stats} />
             </div>
-            <button
-              onClick={() => setData(null)}
-              className="self-start text-sm text-(--text-muted) transition-colors hover:text-(--text)"
-            >
-              ← Import a different file
-            </button>
           </aside>
         </main>
       )}

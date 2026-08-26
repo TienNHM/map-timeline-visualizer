@@ -3,6 +3,7 @@
 import { useTheme } from "@/components/ThemeProvider";
 import Dropdown, { DropdownOption } from "@/components/Dropdown";
 import { Icon } from "@/components/Icon";
+import { useLocale } from "@/components/LocaleProvider";
 
 function Swatch({ colors, size = 18 }: { colors: [string, string]; size?: number }) {
   return (
@@ -19,12 +20,13 @@ function Swatch({ colors, size = 18 }: { colors: [string, string]; size?: number
 
 export default function ThemeSwitcher() {
   const { themeId, setThemeId, themes } = useTheme();
+  const { t } = useLocale();
 
-  const options: DropdownOption<string>[] = themes.map((t) => ({
-    value: t.id,
-    label: t.name,
-    description: t.description,
-    icon: <Swatch colors={t.swatch} />,
+  const options: DropdownOption<string>[] = themes.map((theme) => ({
+    value: theme.id,
+    label: t.theme.names[theme.id] ?? theme.id,
+    description: t.theme.descriptions[theme.id],
+    icon: <Swatch colors={theme.swatch} />,
   }));
 
   return (
@@ -32,7 +34,7 @@ export default function ThemeSwitcher() {
       value={themeId}
       options={options}
       onChange={setThemeId}
-      menuLabel="Theme"
+      menuLabel={t.theme.menuLabel}
       triggerClassName="flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-2.5 py-1.5 text-xs text-(--text-muted) transition-colors hover:text-(--text)"
       renderTrigger={(current) => (
         <>

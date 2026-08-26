@@ -1,5 +1,7 @@
 "use client";
 
+import { useLocale } from "@/components/LocaleProvider";
+
 interface AccuracyFilterProps {
   value: number | null;
   onChange: (value: number | null) => void;
@@ -8,6 +10,7 @@ interface AccuracyFilterProps {
 const DEFAULT_LIMIT = 100;
 
 export default function AccuracyFilter({ value, onChange }: AccuracyFilterProps) {
+  const { t } = useLocale();
   const enabled = value !== null;
 
   return (
@@ -19,7 +22,7 @@ export default function AccuracyFilter({ value, onChange }: AccuracyFilterProps)
           onChange={(e) => onChange(e.target.checked ? DEFAULT_LIMIT : null)}
           className="h-3.5 w-3.5 accent-(--accent)"
         />
-        Accuracy limit (meters)
+        {t.accuracy.label}
       </label>
       <input
         type="number"
@@ -33,9 +36,7 @@ export default function AccuracyFilter({ value, onChange }: AccuracyFilterProps)
         }}
         className="stat-number w-20 rounded-md border border-(--panel-border) bg-(--panel) px-2 py-1 text-(--text) disabled:opacity-40"
       />
-      <span className="text-(--text-faint)">
-        {enabled ? "Drops GPS pings reported less accurate than this." : "No limit — all GPS pings are used."}
-      </span>
+      <span className="text-(--text-faint)">{enabled ? t.accuracy.hintEnabled : t.accuracy.hintDisabled}</span>
     </div>
   );
 }

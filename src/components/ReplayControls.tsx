@@ -2,31 +2,21 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TimelineSegment } from "@/lib/timeline/types";
-import { advanceReplay, buildReplayTrack, CAMERA_MODES, CameraMode, ReplayFrame } from "@/lib/timeline/replay";
+import { advanceReplay, buildReplayTrack, CAMERA_MODE_IDS, CameraMode, ReplayFrame } from "@/lib/timeline/replay";
 import Dropdown, { DropdownOption } from "@/components/Dropdown";
 import { Icon, IconName } from "@/components/Icon";
+import { useLocale } from "@/components/LocaleProvider";
+import { Translations } from "@/lib/i18n/translations";
 
 /** Wall-clock time a full replay takes at 1x speed, regardless of how long the trip actually spanned. */
 const BASE_PLAYBACK_MS = 20000;
 const SPEEDS = [1, 2, 4, 8] as const;
-const SPEED_OPTIONS: DropdownOption<string>[] = SPEEDS.map((s) => ({
-  value: String(s),
-  label: `${s}x speed`,
-  description: `Full replay takes ~${(BASE_PLAYBACK_MS / 1000 / s).toLocaleString(undefined, { maximumFractionDigits: 1 })}s`,
-}));
 
 const CAMERA_MODE_ICON: Record<CameraMode, IconName> = {
   fixed: "cameraFixed",
   steady: "cameraSteady",
   dynamic: "cameraDynamic",
 };
-
-const CAMERA_MODE_OPTIONS: DropdownOption<CameraMode>[] = CAMERA_MODES.map((m) => ({
-  value: m.id,
-  label: m.label,
-  description: m.description,
-  icon: <Icon name={CAMERA_MODE_ICON[m.id]} className="h-3.5 w-3.5 shrink-0" />,
-}));
 
 interface ReplayControlsProps {
   segments: TimelineSegment[];
@@ -35,9 +25,9 @@ interface ReplayControlsProps {
   onCameraModeChange: (mode: CameraMode) => void;
 }
 
-function formatTime(ms: number): string {
+function formatTime(ms: number, localeTag: string): string {
   const d = new Date(ms);
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString(localeTag, {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -45,7 +35,28 @@ function formatTime(ms: number): string {
   });
 }
 
+function buildCameraModeOptions(t: Translations): DropdownOption<CameraMode>[] {
+  return CAMERA_MODE_IDS.map((id) => ({
+    value: id,
+    label: t.cameraModes[id].label,
+    description: t.cameraModes[id].description,
+    icon: <Icon name={CAMERA_MODE_ICON[id]} className="h-3.5 w-3.5 shrink-0" />,
+  }));
+}
+
+function buildSpeedOptions(t: Translations): DropdownOption<string>[] {
+  return SPEEDS.map((s) => ({
+    value: String(s),
+    label: `${s}x ${t.replay.speedLabel}`,
+    description: `${t.replay.fullReplayTakes}${(BASE_PLAYBACK_MS / 1000 / s).toLocaleString(undefined, { maximumFractionDigits: 1 })}s`,
+  }));
+}
+
 export default function ReplayControls({ segments, onFrame, cameraMode, onCameraModeChange }: ReplayControlsProps) {
+  const { locale, t } = useLocale();
+  const localeTag = locale === "vi" ? "vi-VN" : "en-US";
+  const cameraModeOptions = useMemo(() => buildCameraModeOptions(t), [t]);
+  const speedOptions = useMemo(() => buildSpeedOptions(t), [t]);
   const track = useMemo(() => buildReplayTrack(segments), [segments]);
   const startMs = track[0]?.timeMs ?? 0;
   const endMs = track[track.length - 1]?.timeMs ?? 0;
@@ -163,7 +174,7 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
     <div className="flex items-center gap-3 border-t border-(--panel-border) pt-3">
       <button
         onClick={handlePlayPause}
-        aria-label={isPlaying ? "Pause replay" : "Play replay"}
+        aria-label={isPlaying ? t.replay.pauseAria : t.replay.playAria}
         className="accent-fill flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-transform active:scale-95"
         style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-2))" }}
       >
@@ -172,7 +183,7 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
 
       <button
         onClick={handleRestart}
-        aria-label="Restart replay"
+        aria-label={t.replay.restartAria}
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-(--text-muted) transition-colors hover:text-(--text)"
       >
         <Icon name="restart" className="h-4 w-4" />
@@ -195,16 +206,16 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
           />
         </div>
         <div className="mt-1 text-[11px] text-(--text-faint)">
-          <span className="stat-number text-(--text-muted)">{formatTime(currentMs)}</span>
+          <span className="stat-number text-(--text-muted)">{formatTime(currentMs, localeTag)}</span>
         </div>
       </div>
 
       <div className="hidden sm:block">
         <Dropdown
           value={cameraMode}
-          options={CAMERA_MODE_OPTIONS}
+          options={cameraModeOptions}
           onChange={onCameraModeChange}
-          menuLabel="Camera"
+          menuLabel={t.replay.cameraMenuLabel}
           renderTrigger={(current) => (
             <>
               <Icon name={CAMERA_MODE_ICON[current.value]} className="h-3.5 w-3.5 shrink-0" />
@@ -216,9 +227,9 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
 
       <Dropdown
         value={String(speed)}
-        options={SPEED_OPTIONS}
+        options={speedOptions}
         onChange={(v) => setSpeed(Number(v))}
-        menuLabel="Playback speed"
+        menuLabel={t.replay.speedMenuLabel}
         triggerClassName="stat-number flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-2.5 py-1 text-xs text-(--text-muted) transition-colors hover:text-(--text)"
         renderTrigger={() => (
           <>

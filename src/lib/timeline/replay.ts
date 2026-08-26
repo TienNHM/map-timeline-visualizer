@@ -10,11 +10,9 @@ import { haversineDistance } from "./geo";
  */
 export type CameraMode = "fixed" | "steady" | "dynamic";
 
-export const CAMERA_MODES: { id: CameraMode; label: string; description: string }[] = [
-  { id: "fixed", label: "Fixed zoom", description: "Camera stays put — the whole route stays in view." },
-  { id: "steady", label: "Steady following", description: "Pans to keep the marker centered at a constant zoom." },
-  { id: "dynamic", label: "Dynamic following", description: "Zooms in/out and rotates to match your speed and direction." },
-];
+// Labels/descriptions live in the locale translations (t.cameraModes), not here, since
+// this list is display-order data shared by every locale.
+export const CAMERA_MODE_IDS: CameraMode[] = ["fixed", "steady", "dynamic"];
 
 export interface ReplayPoint extends LatLng {
   timeMs: number;

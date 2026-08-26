@@ -3,6 +3,7 @@
 import { useDesignStyle } from "@/components/DesignStyleProvider";
 import Dropdown, { DropdownOption } from "@/components/Dropdown";
 import { Icon } from "@/components/Icon";
+import { useLocale } from "@/components/LocaleProvider";
 
 function StylePreview({ id, size = 18 }: { id: string; size?: number }) {
   if (id === "brutalism") {
@@ -33,11 +34,12 @@ function StylePreview({ id, size = 18 }: { id: string; size?: number }) {
 
 export default function StyleSwitcher() {
   const { styleId, setStyleId, styles } = useDesignStyle();
+  const { t } = useLocale();
 
   const options: DropdownOption<string>[] = styles.map((s) => ({
     value: s.id,
-    label: s.name,
-    description: s.description,
+    label: t.style.names[s.id] ?? s.id,
+    description: t.style.descriptions[s.id],
     icon: <StylePreview id={s.id} />,
   }));
 
@@ -46,7 +48,7 @@ export default function StyleSwitcher() {
       value={styleId}
       options={options}
       onChange={setStyleId}
-      menuLabel="Style"
+      menuLabel={t.style.menuLabel}
       triggerClassName="flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-2.5 py-1.5 text-xs text-(--text-muted) transition-colors hover:text-(--text)"
       renderTrigger={(current) => (
         <>

@@ -1,5 +1,9 @@
+"use client";
+
 import { TimelineStats } from "@/lib/timeline/stats";
 import { Icon, IconName } from "@/components/Icon";
+import { useLocale } from "@/components/LocaleProvider";
+import { Translations } from "@/lib/i18n/translations";
 
 interface StatsPanelProps {
   stats: TimelineStats;
@@ -36,31 +40,26 @@ function activityColor(activity: string): string {
   return FALLBACK_PALETTE[hash % FALLBACK_PALETTE.length];
 }
 
-function formatActivity(activity: string): string {
-  return activity
+function fallbackTitleCase(raw: string): string {
+  return raw
     .toLowerCase()
     .split("_")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 }
 
-const PLACE_LABELS: Record<string, string> = {
-  UNKNOWN: "Other place",
-  HOME: "Home",
-  INFERRED_HOME: "Home",
-  WORK: "Work",
-  INFERRED_WORK: "Work",
-  ALIASED_LOCATION: "Saved place",
-  SEARCHED_ADDRESS: "Searched address",
-};
+function formatActivity(activity: string, t: Translations): string {
+  return t.activities[activity] ?? fallbackTitleCase(activity);
+}
 
-function formatPlaceLabel(label: string): string {
-  if (PLACE_LABELS[label]) return PLACE_LABELS[label];
-  if (/^[A-Z_]+$/.test(label)) return formatActivity(label);
+function formatPlaceLabel(label: string, t: Translations): string {
+  if (t.places[label]) return t.places[label];
+  if (/^[A-Z_]+$/.test(label)) return fallbackTitleCase(label);
   return label;
 }
 
 export default function StatsPanel({ stats }: StatsPanelProps) {
+  const { t } = useLocale();
   const activityEntries = Object.entries(stats.distanceByActivity).sort(
     (a, b) => b[1] - a[1]
   );
@@ -69,16 +68,16 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-3">
-        <StatCard icon="route" label="Total distance" value={formatKm(stats.totalDistanceMeters)} />
-        <StatCard icon="trips" label="Trips" value={stats.tripCount.toLocaleString()} />
-        <StatCard icon="pin" label="Places visited" value={stats.visitCount.toLocaleString()} />
-        <StatCard icon="layers" label="Unique places" value={stats.placeVisitCounts.length.toLocaleString()} />
+        <StatCard icon="route" label={t.stats.totalDistance} value={formatKm(stats.totalDistanceMeters)} />
+        <StatCard icon="trips" label={t.stats.trips} value={stats.tripCount.toLocaleString()} />
+        <StatCard icon="pin" label={t.stats.placesVisited} value={stats.visitCount.toLocaleString()} />
+        <StatCard icon="layers" label={t.stats.uniquePlaces} value={stats.placeVisitCounts.length.toLocaleString()} />
       </div>
 
       {activityEntries.length > 0 && (
         <div>
           <h3 className="mb-3 text-xs font-semibold tracking-wide text-(--text-muted) uppercase">
-            Distance by activity
+            {t.stats.distanceByActivity}
           </h3>
           <div className="flex flex-col gap-2.5">
             {activityEntries.map(([activity, meters]) => {
@@ -90,7 +89,7 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
                     style={{ background: color, boxShadow: `0 0 8px ${color}80` }}
                   />
                   <span className="w-30 shrink-0 truncate text-(--text-muted)">
-                    {formatActivity(activity)}
+                    {formatActivity(activity, t)}
                   </span>
                   <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-(--panel-border)">
                     <div
@@ -114,7 +113,7 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
       {stats.placeVisitCounts.length > 0 && (
         <div>
           <h3 className="mb-3 text-xs font-semibold tracking-wide text-(--text-muted) uppercase">
-            Top places
+            {t.stats.topPlaces}
           </h3>
           <ol className="flex flex-col gap-1">
             {stats.placeVisitCounts.slice(0, 8).map((p, i) => (
@@ -126,10 +125,10 @@ export default function StatsPanel({ stats }: StatsPanelProps) {
                   <span className="stat-number w-5 shrink-0 text-xs text-(--text-faint)">
                     {String(i + 1).padStart(2, "0")}
                   </span>
-                  <span className="truncate text-(--text)">{formatPlaceLabel(p.label)}</span>
+                  <span className="truncate text-(--text)">{formatPlaceLabel(p.label, t)}</span>
                 </span>
                 <span className="stat-number shrink-0 text-xs text-(--text-muted)">
-                  {p.count} {p.count === 1 ? "visit" : "visits"}
+                  {p.count} {p.count === 1 ? t.stats.visit : t.stats.visits}
                 </span>
               </li>
             ))}

@@ -4,12 +4,14 @@ import { useCallback, useRef, useState } from "react";
 import { parseGoogleTimelineFile } from "@/lib/timeline/parse";
 import { TimelineData } from "@/lib/timeline/types";
 import { Icon } from "@/components/Icon";
+import { useLocale } from "@/components/LocaleProvider";
 
 interface FileUploadProps {
   onLoaded: (data: TimelineData) => void;
 }
 
 export default function FileUpload({ onLoaded }: FileUploadProps) {
+  const { t } = useLocale();
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -22,10 +24,7 @@ export default function FileUpload({ onLoaded }: FileUploadProps) {
         const json = JSON.parse(text);
         const data = parseGoogleTimelineFile(json);
         if (data.segments.length === 0 && data.rawTrack.length === 0) {
-          setError(
-            "Parsed the file but found no usable location data. " +
-              (data.warnings[0] ?? "")
-          );
+          setError(`${t.upload.error} ${data.warnings[0] ?? ""}`.trim());
           return;
         }
         onLoaded(data);
@@ -33,7 +32,7 @@ export default function FileUpload({ onLoaded }: FileUploadProps) {
         setError(err instanceof Error ? err.message : "Failed to read file");
       }
     },
-    [onLoaded]
+    [onLoaded, t]
   );
 
   return (
@@ -77,18 +76,13 @@ export default function FileUpload({ onLoaded }: FileUploadProps) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <p className="text-base font-medium text-(--text)">
-          Drop your Google Maps Timeline export here
-        </p>
-        <p className="max-w-md text-sm text-(--text-muted)">
-          or click to browse for a JSON file — the on-device Timeline export,
-          legacy Semantic Location History, or raw Records.json all work.
-        </p>
+        <p className="text-base font-medium text-(--text)">{t.upload.title}</p>
+        <p className="max-w-md text-sm text-(--text-muted)">{t.upload.subtitle}</p>
       </div>
 
       <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-3 py-1 text-xs text-(--text-muted)">
         <span className="h-1.5 w-1.5 rounded-full bg-(--accent-2)" />
-        Nothing leaves your device — parsing happens entirely in your browser
+        {t.upload.privacy}
       </div>
 
       {error && (

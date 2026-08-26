@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useLocale } from "@/components/LocaleProvider";
 
 interface TimelineSliderProps {
   dates: string[];
@@ -15,6 +16,7 @@ export default function TimelineSlider({
   endIndex,
   onChange,
 }: TimelineSliderProps) {
+  const { t } = useLocale();
   const maxIndex = dates.length - 1;
 
   const label = useMemo(() => {
@@ -25,7 +27,7 @@ export default function TimelineSlider({
   }, [dates, startIndex, endIndex]);
 
   if (maxIndex < 1) {
-    return <p className="text-sm text-(--text-muted)">{dates[0] ?? "No data"}</p>;
+    return <p className="text-sm text-(--text-muted)">{dates[0] ?? t.slider.noData}</p>;
   }
 
   const startPct = (startIndex / maxIndex) * 100;
