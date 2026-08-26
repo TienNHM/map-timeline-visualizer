@@ -265,31 +265,34 @@ function setupOverlayLayers(map: MapLibreMap, colors: OverlayColors) {
   }
 }
 
-// Continuous speed -> zoom curve (km/h, zoom), piecewise-linear between points, so the
-// dynamic camera reacts to how fast you're actually covering ground rather than a coarse
-// per-activity bucket — walking a 2 km/h stroll and a 2 km/h traffic-jammed bus both read
-// as "close", while the same bus at highway speed pulls back automatically.
-const SPEED_ZOOM_CURVE: [number, number][] = [
-  [0, 16],
-  [5, 15.5],
-  [15, 14.5],
-  [30, 13],
-  [60, 11.5],
-  [120, 9],
-  [300, 6],
-];
+/** Zoom is never allowed to ease past these, regardless of how the leg's bounds fit —
+ * MAX keeps near-stationary legs (two almost-identical points) from snapping to an
+ * absurdly tight street-level zoom, MIN keeps a rare intercontinental jump readable
+ * instead of pulling all the way out to the whole globe. */
+const MIN_FIT_ZOOM = 4;
+const MAX_FIT_ZOOM = 16;
+/** Screen-space padding (px) kept around the leg's two endpoints, so neither sits
+ * flush against the viewport edge. */
+const FIT_ZOOM_PADDING = 88;
 
-function zoomForSpeedKmh(speedKmh: number): number {
-  if (speedKmh <= SPEED_ZOOM_CURVE[0][0]) return SPEED_ZOOM_CURVE[0][1];
-  for (let i = 1; i < SPEED_ZOOM_CURVE.length; i++) {
-    const [s0, z0] = SPEED_ZOOM_CURVE[i - 1];
-    const [s1, z1] = SPEED_ZOOM_CURVE[i];
-    if (speedKmh <= s1) {
-      const t = (speedKmh - s0) / (s1 - s0);
-      return z0 + (z1 - z0) * t;
+/**
+ * The zoom level that keeps both endpoints of the current leg on screen at once — the
+ * camera fits to where the marker is headed, not just how fast it's nominally going, so
+ * a leg between two far-apart points never runs past the edge of the viewport before the
+ * marker visibly arrives (which reads as "point B is gone, we're already at C").
+ */
+function fitZoomForLeg(map: MapLibreMap, legStart: { lat: number; lng: number }, legEnd: { lat: number; lng: number }): number {
+  const bounds = new maplibregl.LngLatBounds([legStart.lng, legStart.lat], [legStart.lng, legStart.lat]);
+  bounds.extend([legEnd.lng, legEnd.lat]);
+  try {
+    const camera = map.cameraForBounds(bounds, { padding: FIT_ZOOM_PADDING });
+    if (camera && typeof camera.zoom === "number" && Number.isFinite(camera.zoom)) {
+      return Math.min(MAX_FIT_ZOOM, Math.max(MIN_FIT_ZOOM, camera.zoom));
     }
+  } catch {
+    // cameraForBounds can throw on a degenerate (zero-area) bounds; fall back below.
   }
-  return SPEED_ZOOM_CURVE[SPEED_ZOOM_CURVE.length - 1][1];
+  return MAX_FIT_ZOOM;
 }
 
 /** Per-frame easing factors for the dynamic camera (0-1, higher = snappier). Zooming
@@ -400,7 +403,7 @@ function renderReplayFrame(
   // points (a real-world-fast leg), so it needs to pull back the same way dynamic's
   // camera does. Steady just skips the bearing rotation, keeping north-up framing.
   if (dynamicCam.zoom === null) dynamicCam.zoom = map.getZoom();
-  const targetZoom = zoomForSpeedKmh(frame.speedKmh);
+  const targetZoom = fitZoomForLeg(map, frame.legStart, frame.legEnd);
   const zoomEase = targetZoom < dynamicCam.zoom ? ZOOM_OUT_EASE : ZOOM_IN_EASE;
   dynamicCam.zoom += (targetZoom - dynamicCam.zoom) * zoomEase;
 

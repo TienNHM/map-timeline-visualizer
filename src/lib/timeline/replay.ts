@@ -4,9 +4,9 @@ import { haversineDistance } from "./geo";
 
 /**
  * "fixed" keeps the camera on the overview framing set before playback started.
- * "steady" pans to keep the marker centered, easing zoom to a speed-appropriate level
- * (so a fast/far leg between sparse GPS points doesn't run off-screen) but keeping a
- * fixed north-up bearing.
+ * "steady" pans to keep the marker centered, easing zoom so the current leg's two
+ * endpoints both stay on screen (so a far leg between sparse GPS points doesn't run
+ * off-screen before the marker visibly arrives) but keeping a fixed north-up bearing.
  * "dynamic" does the same but also rotates to face the direction of travel.
  */
 export type CameraMode = "fixed" | "steady" | "dynamic";
@@ -163,12 +163,17 @@ export interface ReplayFrame {
   /** The most recent points reached (bounded by MAX_TRAIL_POINTS), including the interpolated current position. */
   trail: LatLng[];
   timeMs: number;
-  /** The activity in effect at this moment (informational; dynamic-camera zoom is speed-based). */
+  /** The activity in effect at this moment (informational). */
   activityType?: string;
   /** Compass bearing (0-360) of travel toward the current position, if determinable. */
   bearing?: number;
-  /** Instantaneous speed over the current track leg, in km/h — drives dynamic-camera zoom. */
+  /** Instantaneous speed over the current track leg, in km/h (informational). */
   speedKmh: number;
+  /** The current leg's two endpoints (equal if there's no next point yet) — the camera
+   * fits its zoom to keep both of these on screen, so a leg never runs past the edge of
+   * the viewport before the marker visibly reaches it. */
+  legStart: LatLng;
+  legEnd: LatLng;
 }
 
 function bearingBetween(a: LatLng, b: LatLng): number {
@@ -234,8 +239,11 @@ export function advanceReplay(
     speedKmh = (legMeters / legSeconds) * 3.6;
   }
 
+  const legStart: LatLng = { lat: current.lat, lng: current.lng };
+  const legEnd: LatLng = next ? { lat: next.lat, lng: next.lng } : legStart;
+
   return {
-    frame: { position, trail, timeMs: atMs, activityType: current.activityType, bearing, speedKmh },
+    frame: { position, trail, timeMs: atMs, activityType: current.activityType, bearing, speedKmh, legStart, legEnd },
     nextIndex: i,
   };
 }
