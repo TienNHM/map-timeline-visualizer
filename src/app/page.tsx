@@ -9,7 +9,7 @@ import ThemeSwitcher from "@/components/ThemeSwitcher";
 import StyleSwitcher from "@/components/StyleSwitcher";
 import LocaleSwitcher from "@/components/LocaleSwitcher";
 import ReplayControls from "@/components/ReplayControls";
-import AccuracyFilter from "@/components/AccuracyFilter";
+import AccuracyFilter, { DEFAULT_ACCURACY_LIMIT_METERS } from "@/components/AccuracyFilter";
 import { Icon } from "@/components/Icon";
 import { useLocale } from "@/components/LocaleProvider";
 import { TimelineData } from "@/lib/timeline/types";
@@ -44,7 +44,7 @@ export default function Home() {
   const [endIndex, setEndIndex] = useState(0);
   const [replayFrame, setReplayFrame] = useState<ReplayFrame | null>(null);
   const [cameraMode, setCameraMode] = useState<CameraMode>("steady");
-  const [accuracyLimit, setAccuracyLimit] = useState<number | null>(null);
+  const [accuracyLimit, setAccuracyLimit] = useState<number | null>(DEFAULT_ACCURACY_LIMIT_METERS);
 
   const dates = useMemo(() => {
     if (!data) return [];

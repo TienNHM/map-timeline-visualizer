@@ -7,7 +7,8 @@ interface AccuracyFilterProps {
   onChange: (value: number | null) => void;
 }
 
-const DEFAULT_LIMIT = 100;
+export const DEFAULT_ACCURACY_LIMIT_METERS = 100;
+const DEFAULT_LIMIT = DEFAULT_ACCURACY_LIMIT_METERS;
 
 export default function AccuracyFilter({ value, onChange }: AccuracyFilterProps) {
   const { t } = useLocale();
