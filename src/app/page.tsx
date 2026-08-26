@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import FileUpload from "@/components/FileUpload";
-import MapView from "@/components/MapView";
+import MapView, { FocusBounds } from "@/components/MapView";
 import TimelineSlider from "@/components/TimelineSlider";
 import StatsPanel from "@/components/StatsPanel";
+import TripsPanel from "@/components/TripsPanel";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import StyleSwitcher from "@/components/StyleSwitcher";
 import LocaleSwitcher from "@/components/LocaleSwitcher";
@@ -16,6 +17,8 @@ import { TimelineData } from "@/lib/timeline/types";
 import { computeStats, segmentsWithinRange } from "@/lib/timeline/stats";
 import { CameraMode, ReplayFrame } from "@/lib/timeline/replay";
 import { filterByAccuracy } from "@/lib/timeline/accuracy";
+import { boundsOf } from "@/lib/timeline/geo";
+import { TripSummary } from "@/lib/timeline/trips";
 
 function toDateKey(iso: string): string {
   return iso.slice(0, 10);
@@ -45,6 +48,9 @@ export default function Home() {
   const [replayFrame, setReplayFrame] = useState<ReplayFrame | null>(null);
   const [cameraMode, setCameraMode] = useState<CameraMode>("steady");
   const [accuracyLimit, setAccuracyLimit] = useState<number | null>(DEFAULT_ACCURACY_LIMIT_METERS);
+  const [panelTab, setPanelTab] = useState<"stats" | "trips">("stats");
+  const [focusBounds, setFocusBounds] = useState<FocusBounds | null>(null);
+  const focusTokenRef = useRef(0);
 
   const dates = useMemo(() => {
     if (!data) return [];
@@ -93,6 +99,14 @@ export default function Home() {
       }),
     [filteredSegments, filteredRawTrack, data]
   );
+
+  function handleSelectTrip(trip: TripSummary) {
+    const points = trip.path.length > 0 ? trip.path : [trip.startLocation, trip.endLocation];
+    const bounds = boundsOf(points);
+    if (!bounds) return;
+    focusTokenRef.current += 1;
+    setFocusBounds({ bounds, token: focusTokenRef.current });
+  }
 
   function handleLoaded(loaded: TimelineData) {
     setData(loaded);
@@ -156,6 +170,7 @@ export default function Home() {
                   rawTrack={filteredRawTrack}
                   replayFrame={replayFrame}
                   cameraMode={cameraMode}
+                  focusBounds={focusBounds}
                 />
               </div>
             </div>
@@ -179,8 +194,32 @@ export default function Home() {
             </div>
           </div>
           <aside className="scroll-thin flex w-full flex-col gap-3 sm:gap-4 lg:w-96 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+            <div className="glass-panel p-1 sm:p-1.5">
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  onClick={() => setPanelTab("stats")}
+                  className={`rounded-[0.6rem] px-3 py-1.5 text-xs font-medium transition-colors ${
+                    panelTab === "stats" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
+                  }`}
+                >
+                  {t.panelTabs.stats}
+                </button>
+                <button
+                  onClick={() => setPanelTab("trips")}
+                  className={`rounded-[0.6rem] px-3 py-1.5 text-xs font-medium transition-colors ${
+                    panelTab === "trips" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
+                  }`}
+                >
+                  {t.panelTabs.trips}
+                </button>
+              </div>
+            </div>
             <div className="glass-panel p-3 sm:p-4">
-              <StatsPanel stats={stats} />
+              {panelTab === "stats" ? (
+                <StatsPanel stats={stats} />
+              ) : (
+                <TripsPanel segments={filteredSegments} onSelectTrip={handleSelectTrip} />
+              )}
             </div>
           </aside>
         </main>

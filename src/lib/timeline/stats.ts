@@ -10,7 +10,7 @@ export interface TimelineStats {
   latestTime: string | null;
 }
 
-function visitLabel(v: Visit): string {
+export function visitLabel(v: Visit): string {
   return v.placeName ?? v.semanticType ?? v.address ?? `${v.location.lat.toFixed(3)}, ${v.location.lng.toFixed(3)}`;
 }
 

@@ -65,6 +65,21 @@ export interface Translations {
   locale: {
     menuLabel: string;
   };
+  panelTabs: {
+    stats: string;
+    trips: string;
+  };
+  trips: {
+    title: string;
+    tripLabel: string;
+    distanceLabel: string;
+    showMore: string;
+    sortLabel: string;
+    sortNewest: string;
+    sortOldest: string;
+    sortDistance: string;
+    empty: string;
+  };
 }
 
 export const TRANSLATIONS: Record<Locale, Translations> = {
@@ -175,6 +190,21 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     locale: {
       menuLabel: "Ngôn ngữ",
     },
+    panelTabs: {
+      stats: "Thống kê",
+      trips: "Chuyến đi",
+    },
+    trips: {
+      title: "Danh sách chuyến đi",
+      tripLabel: "Chuyến",
+      distanceLabel: "Quãng đường",
+      showMore: "Xem thêm",
+      sortLabel: "Sắp xếp",
+      sortNewest: "Mới nhất",
+      sortOldest: "Cũ nhất",
+      sortDistance: "Xa nhất",
+      empty: "Không có chuyến đi nào trong khoảng thời gian này.",
+    },
   },
   en: {
     header: {
@@ -282,6 +312,21 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     },
     locale: {
       menuLabel: "Language",
+    },
+    panelTabs: {
+      stats: "Stats",
+      trips: "Trips",
+    },
+    trips: {
+      title: "Trip list",
+      tripLabel: "Trip",
+      distanceLabel: "Distance",
+      showMore: "Show more",
+      sortLabel: "Sort by",
+      sortNewest: "Newest first",
+      sortOldest: "Oldest first",
+      sortDistance: "Longest distance",
+      empty: "No trips in this date range.",
     },
   },
 };

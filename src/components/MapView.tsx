@@ -18,11 +18,20 @@ import { loadTintedStyle } from "@/lib/mapTint";
 // rather than pointed at via a bundler asset URL that would drop the sibling chunk.
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
+export interface FocusBounds {
+  bounds: [[number, number], [number, number]];
+  /** Bumped by the caller on every selection, including re-selecting the same trip,
+   * so the fit effect always re-runs even when the bounds value is unchanged. */
+  token: number;
+}
+
 interface MapViewProps {
   segments: TimelineSegment[];
   rawTrack?: TrackPoint[];
   replayFrame?: ReplayFrame | null;
   cameraMode?: CameraMode;
+  /** When set, the map fits to these bounds (e.g. a trip selected from the trip list). */
+  focusBounds?: FocusBounds | null;
 }
 
 interface DynamicCameraState {
@@ -44,6 +53,7 @@ export default function MapView({
   rawTrack = [],
   replayFrame = null,
   cameraMode = "steady",
+  focusBounds = null,
 }: MapViewProps) {
   const { themeId, isLight, themes } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -159,6 +169,14 @@ export default function MapView({
     // Only the start/stop transition (not every per-frame position update) should re-run this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!replayFrame]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !focusBounds) return;
+    map.fitBounds(focusBounds.bounds, { padding: 80, maxZoom: 16, duration: 800 });
+    // token is the deliberate re-trigger key — see FocusBounds' doc comment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusBounds?.token]);
 
   // The conditional class lives on this wrapper, not the div passed to `new
   // maplibregl.Map({ container })` below. MapLibre adds its own classes (e.g.

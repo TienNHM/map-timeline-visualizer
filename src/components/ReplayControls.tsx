@@ -16,6 +16,7 @@ import Dropdown, { DropdownOption } from "@/components/Dropdown";
 import { Icon, IconName } from "@/components/Icon";
 import { useLocale } from "@/components/LocaleProvider";
 import { Translations } from "@/lib/i18n/translations";
+import { formatDateTime } from "@/lib/timeline/format";
 
 /** Wall-clock time a full replay takes at 1x speed, regardless of how long the trip actually spanned. */
 const BASE_PLAYBACK_MS = 20000;
@@ -32,16 +33,6 @@ interface ReplayControlsProps {
   onFrame: (frame: ReplayFrame | null) => void;
   cameraMode: CameraMode;
   onCameraModeChange: (mode: CameraMode) => void;
-}
-
-function formatTime(ms: number, localeTag: string): string {
-  const d = new Date(ms);
-  return d.toLocaleString(localeTag, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function buildCameraModeOptions(t: Translations): DropdownOption<CameraMode>[] {
@@ -214,7 +205,7 @@ export default function ReplayControls({ segments, onFrame, cameraMode, onCamera
           />
         </div>
         <div className="mt-1 text-[11px] text-(--text-faint)">
-          <span className="stat-number text-(--text-muted)">{formatTime(currentMs, localeTag)}</span>
+          <span className="stat-number text-(--text-muted)">{formatDateTime(currentMs, localeTag)}</span>
         </div>
       </div>
 

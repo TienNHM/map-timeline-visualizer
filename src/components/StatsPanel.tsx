@@ -1,9 +1,9 @@
 "use client";
 
 import { TimelineStats } from "@/lib/timeline/stats";
+import { formatActivity, formatPlaceLabel } from "@/lib/timeline/format";
 import { Icon, IconName } from "@/components/Icon";
 import { useLocale } from "@/components/LocaleProvider";
-import { Translations } from "@/lib/i18n/translations";
 
 interface StatsPanelProps {
   stats: TimelineStats;
@@ -38,24 +38,6 @@ function activityColor(activity: string): string {
   let hash = 0;
   for (let i = 0; i < activity.length; i++) hash = (hash * 31 + activity.charCodeAt(i)) >>> 0;
   return FALLBACK_PALETTE[hash % FALLBACK_PALETTE.length];
-}
-
-function fallbackTitleCase(raw: string): string {
-  return raw
-    .toLowerCase()
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
-
-function formatActivity(activity: string, t: Translations): string {
-  return t.activities[activity] ?? fallbackTitleCase(activity);
-}
-
-function formatPlaceLabel(label: string, t: Translations): string {
-  if (t.places[label]) return t.places[label];
-  if (/^[A-Z_]+$/.test(label)) return fallbackTitleCase(label);
-  return label;
 }
 
 export default function StatsPanel({ stats }: StatsPanelProps) {
