@@ -1,16 +1,12 @@
 "use client";
 
 import { TimelineStats } from "@/lib/timeline/stats";
-import { formatActivity, formatPlaceLabel } from "@/lib/timeline/format";
+import { formatActivity, formatKm, formatPlaceLabel } from "@/lib/timeline/format";
 import { Icon, IconName } from "@/components/Icon";
 import { useLocale } from "@/components/LocaleProvider";
 
 interface StatsPanelProps {
   stats: TimelineStats;
-}
-
-function formatKm(meters: number): string {
-  return `${(meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} km`;
 }
 
 const ACTIVITY_COLORS: Record<string, string> = {

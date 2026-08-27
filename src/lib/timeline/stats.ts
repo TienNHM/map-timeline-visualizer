@@ -10,8 +10,18 @@ export interface TimelineStats {
   latestTime: string | null;
 }
 
+/** Google reports an inferred guess ("INFERRED_HOME") separately from a confirmed one
+ * ("HOME"), but they mean the same place to a user — grouping/labeling should treat
+ * them as one, not split a place's visits into two "different" entries. */
+const SEMANTIC_TYPE_ALIASES: Record<string, string> = {
+  INFERRED_HOME: "HOME",
+  INFERRED_WORK: "WORK",
+};
+
 export function visitLabel(v: Visit): string {
-  return v.placeName ?? v.semanticType ?? v.address ?? `${v.location.lat.toFixed(3)}, ${v.location.lng.toFixed(3)}`;
+  if (v.placeName) return v.placeName;
+  if (v.semanticType) return SEMANTIC_TYPE_ALIASES[v.semanticType] ?? v.semanticType;
+  return v.address ?? `${v.location.lat.toFixed(3)}, ${v.location.lng.toFixed(3)}`;
 }
 
 export function computeStats(data: TimelineData): TimelineStats {

@@ -26,3 +26,11 @@ export function formatDateTime(ms: number, localeTag: string): string {
     minute: "2-digit",
   });
 }
+
+export function formatKm(meters: number): string {
+  return `${(meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} km`;
+}
+
+export function formatHours(ms: number): string {
+  return `${(ms / 3600000).toLocaleString(undefined, { maximumFractionDigits: 1 })}h`;
+}

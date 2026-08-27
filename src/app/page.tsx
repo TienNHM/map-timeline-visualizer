@@ -7,6 +7,7 @@ import TimelineSlider from "@/components/TimelineSlider";
 import StatsPanel from "@/components/StatsPanel";
 import TripsPanel from "@/components/TripsPanel";
 import CalendarView from "@/components/CalendarView";
+import LifeMapModal from "@/components/LifeMapModal";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import StyleSwitcher from "@/components/StyleSwitcher";
 import LocaleSwitcher from "@/components/LocaleSwitcher";
@@ -52,6 +53,7 @@ export default function Home() {
   const [accuracyLimit, setAccuracyLimit] = useState<number | null>(DEFAULT_ACCURACY_LIMIT_METERS);
   const [panelTab, setPanelTab] = useState<"stats" | "trips" | "calendar">("stats");
   const [focusBounds, setFocusBounds] = useState<FocusBounds | null>(null);
+  const [showLifeMap, setShowLifeMap] = useState(false);
   const focusTokenRef = useRef(0);
 
   const dates = useMemo(() => {
@@ -167,6 +169,15 @@ export default function Home() {
           <LocaleSwitcher />
           {data && (
             <button
+              onClick={() => setShowLifeMap(true)}
+              className="flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-3 py-1.5 text-xs text-(--text-muted) transition-colors hover:text-(--text)"
+            >
+              <Icon name="trips" className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">{t.lifeMap.openButton}</span>
+            </button>
+          )}
+          {data && (
+            <button
               onClick={() => setData(null)}
               className="flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-3 py-1.5 text-xs text-(--text-muted) transition-colors hover:text-(--text)"
             >
@@ -260,6 +271,8 @@ export default function Home() {
           </aside>
         </main>
       )}
+
+      {data && showLifeMap && <LifeMapModal segments={data.segments} onClose={() => setShowLifeMap(false)} />}
     </div>
   );
 }

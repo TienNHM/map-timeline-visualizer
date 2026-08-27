@@ -77,6 +77,20 @@ export interface Translations {
   heatmap: {
     toggleLabel: string;
   };
+  lifeMap: {
+    openButton: string;
+    titlePrefix: string;
+    closeAria: string;
+    prevYearAria: string;
+    nextYearAria: string;
+    distance: string;
+    trips: string;
+    placesVisited: string;
+    uniquePlaces: string;
+    travelTime: string;
+    topPlaces: string;
+    noData: string;
+  };
   trips: {
     title: string;
     tripLabel: string;
@@ -210,6 +224,20 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     heatmap: {
       toggleLabel: "Bật/tắt bản đồ nhiệt",
     },
+    lifeMap: {
+      openButton: "Hành trình của tôi",
+      titlePrefix: "Hành trình năm ",
+      closeAria: "Đóng",
+      prevYearAria: "Năm trước",
+      nextYearAria: "Năm sau",
+      distance: "Quãng đường",
+      trips: "Chuyến đi",
+      placesVisited: "Lượt ghé thăm",
+      uniquePlaces: "Địa điểm khác nhau",
+      travelTime: "Thời gian di chuyển",
+      topPlaces: "Nơi dành nhiều thời gian nhất",
+      noData: "Không có dữ liệu cho năm này.",
+    },
     trips: {
       title: "Danh sách chuyến đi",
       tripLabel: "Chuyến",
@@ -340,6 +368,20 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     },
     heatmap: {
       toggleLabel: "Toggle heatmap",
+    },
+    lifeMap: {
+      openButton: "My Life Map",
+      titlePrefix: "My ",
+      closeAria: "Close",
+      prevYearAria: "Previous year",
+      nextYearAria: "Next year",
+      distance: "Distance",
+      trips: "Trips",
+      placesVisited: "Places visited",
+      uniquePlaces: "Unique places",
+      travelTime: "Travel time",
+      topPlaces: "Most visited",
+      noData: "No data for this year.",
     },
     trips: {
       title: "Trip list",

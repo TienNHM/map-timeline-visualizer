@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { TimelineSegment } from "@/lib/timeline/types";
 import { buildTripSummaries, TripSummary } from "@/lib/timeline/trips";
-import { formatActivity, formatDateTime, formatPlaceLabel } from "@/lib/timeline/format";
+import { formatActivity, formatDateTime, formatKm, formatPlaceLabel } from "@/lib/timeline/format";
 import { Icon } from "@/components/Icon";
 import Dropdown, { DropdownOption } from "@/components/Dropdown";
 import { useLocale } from "@/components/LocaleProvider";
@@ -11,10 +11,6 @@ import { useLocale } from "@/components/LocaleProvider";
 type SortKey = "date-desc" | "date-asc" | "distance-desc";
 
 const PAGE_SIZE = 40;
-
-function formatKm(meters: number): string {
-  return `${(meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} km`;
-}
 
 interface TripsPanelProps {
   segments: TimelineSegment[];
