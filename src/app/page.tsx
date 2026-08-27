@@ -6,6 +6,7 @@ import MapView, { FocusBounds } from "@/components/MapView";
 import TimelineSlider from "@/components/TimelineSlider";
 import StatsPanel from "@/components/StatsPanel";
 import TripsPanel from "@/components/TripsPanel";
+import PlacesPanel from "@/components/PlacesPanel";
 import CalendarView from "@/components/CalendarView";
 import AIPanel from "@/components/AIPanel";
 import LifeMapModal from "@/components/LifeMapModal";
@@ -23,6 +24,7 @@ import { CameraMode, ReplayFrame } from "@/lib/timeline/replay";
 import { filterByAccuracy } from "@/lib/timeline/accuracy";
 import { boundsOf } from "@/lib/timeline/geo";
 import { TripSortKey, TripSummary } from "@/lib/timeline/trips";
+import { clusterRadiusForAccuracyLimit, PlaceMarker } from "@/lib/timeline/places";
 import { AIAction } from "@/lib/ai/actions";
 
 function toDateKey(iso: string): string {
@@ -53,7 +55,7 @@ export default function Home() {
   const [replayFrame, setReplayFrame] = useState<ReplayFrame | null>(null);
   const [cameraMode, setCameraMode] = useState<CameraMode>("steady");
   const [accuracyLimit, setAccuracyLimit] = useState<number | null>(DEFAULT_ACCURACY_LIMIT_METERS);
-  const [panelTab, setPanelTab] = useState<"stats" | "trips" | "calendar" | "ai">("stats");
+  const [panelTab, setPanelTab] = useState<"stats" | "trips" | "places" | "calendar" | "ai">("stats");
   const [focusBounds, setFocusBounds] = useState<FocusBounds | null>(null);
   const [showLifeMap, setShowLifeMap] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
@@ -97,6 +99,8 @@ export default function Home() {
     () => filterByAccuracy(dateFilteredSegments, dateFilteredRawTrack, accuracyLimit),
     [dateFilteredSegments, dateFilteredRawTrack, accuracyLimit]
   );
+
+  const clusterRadiusMeters = useMemo(() => clusterRadiusForAccuracyLimit(accuracyLimit), [accuracyLimit]);
 
   // Looking up by id (rather than trusting selectedTrip to still be valid) means a
   // stale selection — e.g. the date range changed and some of that trip's legs fell out
@@ -180,9 +184,26 @@ export default function Home() {
     }
   }
 
-  function handlePanelTabChange(tab: "stats" | "trips" | "calendar" | "ai") {
+  function handlePanelTabChange(tab: "stats" | "trips" | "places" | "calendar" | "ai") {
     setPanelTab(tab);
     if (tab !== "trips") setSelectedTrip(null);
+  }
+
+  // Places are single points, not a route with a natural bounding box — pad a small
+  // fixed box around the point instead so the existing fitBounds-based focus mechanism
+  // (shared with trip selection) still applies here.
+  const PLACE_FOCUS_PADDING_DEG = 0.003;
+
+  function handleSelectPlace(place: PlaceMarker) {
+    const { lat, lng } = place.location;
+    focusTokenRef.current += 1;
+    setFocusBounds({
+      bounds: [
+        [lng - PLACE_FOCUS_PADDING_DEG, lat - PLACE_FOCUS_PADDING_DEG],
+        [lng + PLACE_FOCUS_PADDING_DEG, lat + PLACE_FOCUS_PADDING_DEG],
+      ],
+      token: focusTokenRef.current,
+    });
   }
 
   function handleSelectTrip(trip: TripSummary) {
@@ -297,10 +318,10 @@ export default function Home() {
           </div>
           <aside className="scroll-thin flex w-full flex-col gap-3 sm:gap-4 lg:w-96 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             <div className="glass-panel sticky top-0 z-10 p-1 sm:p-1.5">
-              <div className="grid grid-cols-4 gap-1">
+              <div className="grid grid-cols-5 gap-1">
                 <button
                   onClick={() => handlePanelTabChange("stats")}
-                  className={`rounded-[0.6rem] px-2 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-[0.6rem] px-1.5 py-1.5 text-xs font-medium transition-colors ${
                     panelTab === "stats" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
                   }`}
                 >
@@ -308,15 +329,23 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => handlePanelTabChange("trips")}
-                  className={`rounded-[0.6rem] px-2 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-[0.6rem] px-1.5 py-1.5 text-xs font-medium transition-colors ${
                     panelTab === "trips" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
                   }`}
                 >
                   {t.panelTabs.trips}
                 </button>
                 <button
+                  onClick={() => handlePanelTabChange("places")}
+                  className={`rounded-[0.6rem] px-1.5 py-1.5 text-xs font-medium transition-colors ${
+                    panelTab === "places" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
+                  }`}
+                >
+                  {t.panelTabs.places}
+                </button>
+                <button
                   onClick={() => handlePanelTabChange("calendar")}
-                  className={`rounded-[0.6rem] px-2 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-[0.6rem] px-1.5 py-1.5 text-xs font-medium transition-colors ${
                     panelTab === "calendar" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
                   }`}
                 >
@@ -324,7 +353,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => handlePanelTabChange("ai")}
-                  className={`rounded-[0.6rem] px-2 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-[0.6rem] px-1.5 py-1.5 text-xs font-medium transition-colors ${
                     panelTab === "ai" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
                   }`}
                 >
@@ -341,6 +370,13 @@ export default function Home() {
                   selectedTripId={selectedTrip?.id ?? null}
                   sortKey={tripSortKey}
                   onSortKeyChange={setTripSortKey}
+                />
+              )}
+              {panelTab === "places" && (
+                <PlacesPanel
+                  segments={filteredSegments}
+                  clusterRadiusMeters={clusterRadiusMeters}
+                  onSelectPlace={handleSelectPlace}
                 />
               )}
               {panelTab === "calendar" && (

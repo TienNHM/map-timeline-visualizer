@@ -10,6 +10,8 @@ export interface PlaceMarker {
   category: PlaceCategory;
   visitCount: number;
   durationMs: number;
+  firstVisitTime: string;
+  lastVisitTime: string;
 }
 
 const METERS_PER_DEGREE = 111320;
@@ -37,7 +39,7 @@ export function clusterRadiusForAccuracyLimit(limitMeters: number | null): numbe
   return Math.min(MAX_CLUSTER_RADIUS_METERS, Math.max(MIN_CLUSTER_RADIUS_METERS, limitMeters));
 }
 
-function coordKey(lat: number, lng: number, radiusMeters: number): string {
+export function placeCoordKey(lat: number, lng: number, radiusMeters: number): string {
   const cellDeg = radiusMeters / METERS_PER_DEGREE;
   const latCell = Math.round(lat / cellDeg);
   const lngCell = Math.round(lng / cellDeg);
@@ -65,6 +67,8 @@ interface Cluster {
   durationMs: number;
   bestVisit: Visit;
   bestRank: number;
+  firstVisitTime: string;
+  lastVisitTime: string;
 }
 
 function durationMs(v: Visit): number {
@@ -86,18 +90,29 @@ export function buildPlaceMarkers(
 
   for (const segment of segments) {
     if (!isVisit(segment)) continue;
-    const key = coordKey(segment.location.lat, segment.location.lng, clusterRadiusMeters);
+    const key = placeCoordKey(segment.location.lat, segment.location.lng, clusterRadiusMeters);
     const rank = CATEGORY_RANK[categoryForVisit(segment)];
 
     let cluster = clusters.get(key);
     if (!cluster) {
-      cluster = { latSum: 0, lngSum: 0, count: 0, durationMs: 0, bestVisit: segment, bestRank: rank };
+      cluster = {
+        latSum: 0,
+        lngSum: 0,
+        count: 0,
+        durationMs: 0,
+        bestVisit: segment,
+        bestRank: rank,
+        firstVisitTime: segment.startTime,
+        lastVisitTime: segment.startTime,
+      };
       clusters.set(key, cluster);
     }
     cluster.latSum += segment.location.lat;
     cluster.lngSum += segment.location.lng;
     cluster.count += 1;
     cluster.durationMs += durationMs(segment);
+    if (segment.startTime < cluster.firstVisitTime) cluster.firstVisitTime = segment.startTime;
+    if (segment.startTime > cluster.lastVisitTime) cluster.lastVisitTime = segment.startTime;
     if (rank < cluster.bestRank) {
       cluster.bestVisit = segment;
       cluster.bestRank = rank;
@@ -111,5 +126,19 @@ export function buildPlaceMarkers(
     category: categoryForVisit(c.bestVisit),
     visitCount: c.count,
     durationMs: c.durationMs,
+    firstVisitTime: c.firstVisitTime,
+    lastVisitTime: c.lastVisitTime,
   }));
+}
+
+/**
+ * The individual Visit occurrences behind one place marker, newest first — computed on
+ * demand (rather than carried on every PlaceMarker) since most consumers only need this
+ * for whichever single place a user has expanded/clicked, not for the whole list.
+ */
+export function placeVisits(segments: TimelineSegment[], key: string, clusterRadiusMeters: number): Visit[] {
+  return segments
+    .filter(isVisit)
+    .filter((v) => placeCoordKey(v.location.lat, v.location.lng, clusterRadiusMeters) === key)
+    .sort((a, b) => b.startTime.localeCompare(a.startTime));
 }

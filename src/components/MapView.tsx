@@ -14,7 +14,7 @@ import { useLocale } from "@/components/LocaleProvider";
 import { Translations } from "@/lib/i18n/translations";
 import { loadTintedStyle } from "@/lib/mapTint";
 import { buildPinImageData } from "@/lib/mapPins";
-import { formatHours, formatPlaceLabel } from "@/lib/timeline/format";
+import { formatDateTime, formatHours, formatPlaceLabel } from "@/lib/timeline/format";
 import { Icon } from "@/components/Icon";
 
 // MapLibre's default worker auto-detection breaks when bundled by Next.js, leaving
@@ -73,7 +73,7 @@ export default function MapView({
   accuracyLimit = null,
 }: MapViewProps) {
   const { themeId, isLight, themes } = useTheme();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const segmentsRef = useRef(segments);
@@ -84,12 +84,12 @@ export default function MapView({
   const styleGenerationRef = useRef(0);
   const dynamicCamRef = useRef<DynamicCameraState>({ center: null, zoom: null, bearing: 0 });
   const showHeatmapRef = useRef(showHeatmap);
-  const localeRef = useRef(t);
+  const localeRef = useRef({ t, localeTag: locale === "vi" ? "vi-VN" : "en-US" });
   const clusterRadiusRef = useRef(clusterRadiusForAccuracyLimit(accuracyLimit));
 
   useEffect(() => {
-    localeRef.current = t;
-  }, [t]);
+    localeRef.current = { t, localeTag: locale === "vi" ? "vi-VN" : "en-US" };
+  }, [t, locale]);
 
   useEffect(() => {
     segmentsRef.current = segments;
@@ -379,9 +379,10 @@ function escapeHtml(input: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Shows a themed popup with the place's name, visit count, and total time spent there
- * when its pin is clicked — otherwise that's only visible by digging into the Stats tab. */
-function bindPlacePopup(map: MapLibreMap, localeRef: { current: Translations }) {
+/** Shows a themed popup with the place's name, visit count, total time spent, and
+ * first/last visited dates when its pin is clicked — otherwise none of that is visible
+ * without digging into the Places tab. */
+function bindPlacePopup(map: MapLibreMap, localeRef: { current: { t: Translations; localeTag: string } }) {
   map.on("mouseenter", "places-symbol", () => {
     map.getCanvas().style.cursor = "pointer";
   });
@@ -391,14 +392,22 @@ function bindPlacePopup(map: MapLibreMap, localeRef: { current: Translations }) 
   map.on("click", "places-symbol", (e) => {
     const feature = e.features?.[0];
     if (!feature || feature.geometry.type !== "Point") return;
-    const props = feature.properties as { label: string; visitCount: number; durationMs: number };
-    const t = localeRef.current;
+    const props = feature.properties as {
+      label: string;
+      visitCount: number;
+      durationMs: number;
+      firstVisitTime: string;
+      lastVisitTime: string;
+    };
+    const { t, localeTag } = localeRef.current;
     const coordinates = feature.geometry.coordinates.slice(0, 2) as [number, number];
 
     const html = `
       <div style="font:600 13px/1.3 sans-serif;margin-bottom:4px;">${escapeHtml(formatPlaceLabel(props.label, t))}</div>
       <div style="font:12px/1.4 sans-serif;opacity:0.75;">${props.visitCount} ${escapeHtml(t.mapPopup.visits)}</div>
       <div style="font:12px/1.4 sans-serif;opacity:0.75;">${escapeHtml(t.mapPopup.timeSpent)}: ${formatHours(props.durationMs)}</div>
+      <div style="font:12px/1.4 sans-serif;opacity:0.75;margin-top:2px;">${escapeHtml(t.mapPopup.firstVisited)}: ${escapeHtml(formatDateTime(new Date(props.firstVisitTime).getTime(), localeTag))}</div>
+      <div style="font:12px/1.4 sans-serif;opacity:0.75;">${escapeHtml(t.mapPopup.lastVisited)}: ${escapeHtml(formatDateTime(new Date(props.lastVisitTime).getTime(), localeTag))}</div>
     `;
 
     new maplibregl.Popup({ closeButton: true, closeOnClick: true, offset: 18, className: "place-popup" })
@@ -657,6 +666,8 @@ function renderData(
       category: place.category,
       visitCount: place.visitCount,
       durationMs: place.durationMs,
+      firstVisitTime: place.firstVisitTime,
+      lastVisitTime: place.lastVisitTime,
       // icon-size scales off this — hours spent, not raw ms, keeps the interpolation
       // stops in registerPinImages' caller (setupOverlayLayers) human-scaled.
       weight: place.durationMs / 3600000,

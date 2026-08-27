@@ -68,6 +68,7 @@ export interface Translations {
   panelTabs: {
     stats: string;
     trips: string;
+    places: string;
     calendar: string;
     ai: string;
   };
@@ -81,6 +82,23 @@ export interface Translations {
   mapPopup: {
     visits: string;
     timeSpent: string;
+    firstVisited: string;
+    lastVisited: string;
+  };
+  placesPanel: {
+    title: string;
+    sortLabel: string;
+    sortVisits: string;
+    sortDuration: string;
+    sortRecent: string;
+    empty: string;
+    showMore: string;
+    visitsLabel: string;
+    timeSpentLabel: string;
+    firstVisited: string;
+    lastVisited: string;
+    viewVisits: string;
+    hideVisits: string;
   };
   ai: {
     title: string;
@@ -233,6 +251,7 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     panelTabs: {
       stats: "Thống kê",
       trips: "Chuyến đi",
+      places: "Địa điểm",
       calendar: "Lịch",
       ai: "Trợ lý AI",
     },
@@ -246,6 +265,23 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     mapPopup: {
       visits: "lượt ghé",
       timeSpent: "Tổng thời gian",
+      firstVisited: "Lần đầu",
+      lastVisited: "Lần gần nhất",
+    },
+    placesPanel: {
+      title: "Địa điểm",
+      sortLabel: "Sắp xếp",
+      sortVisits: "Nhiều lượt ghé nhất",
+      sortDuration: "Nhiều thời gian nhất",
+      sortRecent: "Ghé gần đây nhất",
+      empty: "Không có địa điểm nào trong khoảng thời gian này.",
+      showMore: "Xem thêm",
+      visitsLabel: "lượt ghé",
+      timeSpentLabel: "Tổng thời gian",
+      firstVisited: "Lần đầu",
+      lastVisited: "Lần gần nhất",
+      viewVisits: "Xem các lần ghé",
+      hideVisits: "Ẩn danh sách",
     },
     ai: {
       title: "Hỏi về hành trình của bạn",
@@ -401,6 +437,7 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     panelTabs: {
       stats: "Stats",
       trips: "Trips",
+      places: "Places",
       calendar: "Calendar",
       ai: "AI Assistant",
     },
@@ -414,6 +451,23 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     mapPopup: {
       visits: "visits",
       timeSpent: "Total time",
+      firstVisited: "First visited",
+      lastVisited: "Last visited",
+    },
+    placesPanel: {
+      title: "Places",
+      sortLabel: "Sort by",
+      sortVisits: "Most visits",
+      sortDuration: "Most time spent",
+      sortRecent: "Most recently visited",
+      empty: "No places in this date range.",
+      showMore: "Show more",
+      visitsLabel: "visits",
+      timeSpentLabel: "Total time",
+      firstVisited: "First visited",
+      lastVisited: "Last visited",
+      viewVisits: "View visits",
+      hideVisits: "Hide visits",
     },
     ai: {
       title: "Ask about your timeline",
