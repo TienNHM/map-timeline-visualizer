@@ -74,6 +74,9 @@ export interface Translations {
     prevAria: string;
     nextAria: string;
   };
+  heatmap: {
+    toggleLabel: string;
+  };
   trips: {
     title: string;
     tripLabel: string;
@@ -204,6 +207,9 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
       prevAria: "Tháng trước",
       nextAria: "Tháng sau",
     },
+    heatmap: {
+      toggleLabel: "Bật/tắt bản đồ nhiệt",
+    },
     trips: {
       title: "Danh sách chuyến đi",
       tripLabel: "Chuyến",
@@ -331,6 +337,9 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     calendar: {
       prevAria: "Previous month",
       nextAria: "Next month",
+    },
+    heatmap: {
+      toggleLabel: "Toggle heatmap",
     },
     trips: {
       title: "Trip list",

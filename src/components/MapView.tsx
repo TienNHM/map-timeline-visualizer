@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -9,7 +9,9 @@ import { boundsOf } from "@/lib/timeline/geo";
 import { isTrip, isVisit } from "@/lib/timeline/stats";
 import { CameraMode, ReplayFrame } from "@/lib/timeline/replay";
 import { useTheme } from "@/components/ThemeProvider";
+import { useLocale } from "@/components/LocaleProvider";
 import { loadTintedStyle } from "@/lib/mapTint";
+import { Icon } from "@/components/Icon";
 
 // MapLibre's default worker auto-detection breaks when bundled by Next.js, leaving
 // GeoJSON sources permanently stuck in a "loading" state with nothing rendered.
@@ -56,6 +58,7 @@ export default function MapView({
   focusBounds = null,
 }: MapViewProps) {
   const { themeId, isLight, themes } = useTheme();
+  const { t } = useLocale();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const segmentsRef = useRef(segments);
@@ -65,6 +68,8 @@ export default function MapView({
   const hasFitRef = useRef(false);
   const styleGenerationRef = useRef(0);
   const dynamicCamRef = useRef<DynamicCameraState>({ center: null, zoom: null, bearing: 0 });
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const showHeatmapRef = useRef(showHeatmap);
 
   useEffect(() => {
     segmentsRef.current = segments;
@@ -99,7 +104,8 @@ export default function MapView({
         renderData(map, segmentsRef.current, rawTrackRef.current, { fit: !hasFitRef.current });
         hasFitRef.current = true;
         renderReplayFrame(map, replayFrameRef.current, { pan: false });
-        setStaticLayersDimmed(map, !!replayFrameRef.current);
+        setHeatmapVisible(map, showHeatmapRef.current);
+        setStaticLayersDimmed(map, !!replayFrameRef.current || showHeatmapRef.current);
       });
 
       mapRef.current = map;
@@ -165,10 +171,16 @@ export default function MapView({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (map) setStaticLayersDimmed(map, !!replayFrame);
+    if (map) setStaticLayersDimmed(map, !!replayFrame || showHeatmap);
     // Only the start/stop transition (not every per-frame position update) should re-run this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!replayFrame]);
+  }, [!!replayFrame, showHeatmap]);
+
+  useEffect(() => {
+    showHeatmapRef.current = showHeatmap;
+    const map = mapRef.current;
+    if (map) setHeatmapVisible(map, showHeatmap);
+  }, [showHeatmap]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -186,8 +198,18 @@ export default function MapView({
   // whenever isLight flipped — React would overwrite the whole className attribute
   // and silently wipe out MapLibre's classes, breaking the canvas's positioning.
   return (
-    <div className={`h-full w-full ${isLight ? "" : "map-dark-tiles"}`}>
+    <div className={`relative h-full w-full ${isLight ? "" : "map-dark-tiles"}`}>
       <div ref={containerRef} className="h-full min-h-100 w-full" />
+      <button
+        onClick={() => setShowHeatmap((v) => !v)}
+        aria-pressed={showHeatmap}
+        title={t.heatmap.toggleLabel}
+        className={`absolute top-3 left-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-(--panel-border) bg-(--panel) shadow-lg transition-colors ${
+          showHeatmap ? "text-(--accent)" : "text-(--text-muted) hover:text-(--text)"
+        }`}
+      >
+        <Icon name="heatmap" className="h-4.5 w-4.5" />
+      </button>
     </div>
   );
 }
@@ -239,6 +261,33 @@ function setupOverlayLayers(map: MapLibreMap, colors: OverlayColors) {
         "circle-opacity": 1,
         "circle-stroke-width": 2,
         "circle-stroke-color": colors.isLight ? "#ffffff" : "#0b0b12",
+      },
+    });
+  }
+
+  if (!map.getSource("heatmap-points")) {
+    map.addSource("heatmap-points", { type: "geojson", data: EMPTY_FC });
+    map.addLayer({
+      id: "heatmap-layer",
+      type: "heatmap",
+      source: "heatmap-points",
+      layout: { visibility: "none" },
+      paint: {
+        "heatmap-weight": ["interpolate", ["linear"], ["get", "weight"], 0, 0, 24, 1],
+        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 1, 15, 3],
+        "heatmap-color": [
+          "interpolate",
+          ["linear"],
+          ["heatmap-density"],
+          0, "rgba(33,102,172,0)",
+          0.2, "rgb(103,169,207)",
+          0.4, "rgb(209,229,240)",
+          0.6, "rgb(253,219,199)",
+          0.8, "rgb(239,138,98)",
+          1, "rgb(178,24,43)",
+        ],
+        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 0, 2, 9, 20, 15, 40],
+        "heatmap-opacity": 0.8,
       },
     });
   }
@@ -349,6 +398,45 @@ function setStaticLayersDimmed(map: MapLibreMap, dimmed: boolean) {
   if (map.getLayer("trips-line")) map.setPaintProperty("trips-line", "line-opacity", opacity.trips);
   if (map.getLayer("visits-circle")) map.setPaintProperty("visits-circle", "circle-opacity", opacity.visits);
   if (map.getLayer("raw-track-line")) map.setPaintProperty("raw-track-line", "line-opacity", opacity.rawTrack);
+}
+
+function setHeatmapVisible(map: MapLibreMap, visible: boolean) {
+  if (map.getLayer("heatmap-layer")) {
+    map.setLayoutProperty("heatmap-layer", "visibility", visible ? "visible" : "none");
+  }
+}
+
+/** Caps how much a single very long visit (e.g. "home" spanning days in aggregated
+ * semantic data) can dominate the heatmap relative to points from actual movement. */
+const MAX_VISIT_WEIGHT_HOURS = 24;
+
+/**
+ * Builds the point cloud the heatmap layer renders density from: every raw GPS ping and
+ * trip path point (weight 1, since their sheer density already reflects time spent —
+ * moving slowly or stopped briefly produces more pings per unit distance), plus one
+ * point per visit weighted by how long it lasted (since a visit is often just a single
+ * lat/lng with no repeated pings of its own to build density from).
+ */
+function buildHeatmapFeatures(segments: TimelineSegment[], rawTrack: TrackPoint[]) {
+  function point(lng: number, lat: number, weight: number) {
+    return {
+      type: "Feature" as const,
+      properties: { weight },
+      geometry: { type: "Point" as const, coordinates: [lng, lat] },
+    };
+  }
+
+  const features = [
+    ...rawTrack.map((p) => point(p.lng, p.lat, 1)),
+    ...segments.filter(isTrip).flatMap((trip) => trip.path.map((p) => point(p.lng, p.lat, 1))),
+    ...segments.filter(isVisit).map((visit) => {
+      const hours = (new Date(visit.endTime).getTime() - new Date(visit.startTime).getTime()) / 3600000;
+      const weight = Math.min(MAX_VISIT_WEIGHT_HOURS, Math.max(1, Number.isFinite(hours) ? hours : 1));
+      return point(visit.location.lng, visit.location.lat, weight);
+    }),
+  ];
+
+  return { type: "FeatureCollection" as const, features };
 }
 
 function renderReplayFrame(
@@ -488,6 +576,9 @@ function renderData(
 
   const visitSource = map.getSource("visits") as GeoJSONSource | undefined;
   visitSource?.setData({ type: "FeatureCollection", features: visitFeatures });
+
+  const heatmapSource = map.getSource("heatmap-points") as GeoJSONSource | undefined;
+  heatmapSource?.setData(buildHeatmapFeatures(segments, rawTrack));
 
   if (!options.fit) return;
 
