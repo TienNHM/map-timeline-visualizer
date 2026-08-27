@@ -21,6 +21,17 @@ export interface Translations {
     subtitle: string;
     privacy: string;
     error: string;
+    guideLink: string;
+  };
+  importGuide: {
+    title: string;
+    intro: string;
+    closeAria: string;
+    disclaimer: string;
+    tabPhone: string;
+    tabTakeout: string;
+    phoneSteps: string[];
+    takeoutSteps: string[];
   };
   stats: {
     totalDistance: string;
@@ -156,6 +167,31 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
         "hoặc bấm để chọn file JSON — hỗ trợ bản xuất Timeline trên máy, Semantic Location History cũ, hoặc Records.json thô.",
       privacy: "Không có gì rời khỏi thiết bị của bạn — mọi xử lý diễn ra ngay trong trình duyệt",
       error: "Đã đọc file nhưng không tìm thấy dữ liệu vị trí hợp lệ.",
+      guideLink: "Chưa biết lấy file này ở đâu? Xem hướng dẫn",
+    },
+    importGuide: {
+      title: "Cách lấy file Dòng thời gian từ Google",
+      intro:
+        "Tùy vào thời điểm bạn bắt đầu dùng Dòng thời gian (Timeline), dữ liệu của bạn sẽ ở một trong hai chỗ dưới đây — thử cách 1 trước, nếu không thấy tùy chọn đó thì dùng cách 2.",
+      closeAria: "Đóng",
+      disclaimer:
+        "Giao diện của Google có thể thay đổi theo thời gian, thiết bị và khu vực — tên các mục có thể hơi khác một chút so với hướng dẫn này.",
+      tabPhone: "Điện thoại (mới nhất)",
+      tabTakeout: "Google Takeout (dữ liệu cũ)",
+      phoneSteps: [
+        "Mở ứng dụng Google Maps trên điện thoại (Android hoặc iOS).",
+        "Bấm vào ảnh đại diện của bạn ở góc trên → chọn \"Dữ liệu vị trí\" hoặc \"Dòng thời gian\" (Timeline).",
+        "Tìm và bấm \"Xuất dữ liệu Dòng thời gian\" (Export Timeline data).",
+        "Lưu file .json — gửi email cho chính mình, lưu vào Drive, hoặc chuyển qua máy tính.",
+        "Tải file .json đó lên ô nhập file ở trên.",
+      ],
+      takeoutSteps: [
+        "Truy cập takeout.google.com bằng máy tính, đăng nhập tài khoản Google của bạn.",
+        "Bấm \"Bỏ chọn tất cả\", sau đó chỉ tick vào \"Location History (Timeline)\".",
+        "Bấm \"Tiếp theo\", giữ định dạng file .zip và kiểu JSON (mặc định).",
+        "Bấm \"Tạo export\" — Google sẽ gửi email khi file sẵn sàng (vài phút đến vài giờ).",
+        "Giải nén file zip, tìm \"Records.json\" hoặc thư mục \"Semantic Location History\", rồi tải file đó lên đây.",
+      ],
     },
     stats: {
       totalDistance: "Tổng quãng đường",
@@ -342,6 +378,31 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
         "or click to browse for a JSON file — the on-device Timeline export, legacy Semantic Location History, or raw Records.json all work.",
       privacy: "Nothing leaves your device — parsing happens entirely in your browser",
       error: "Parsed the file but found no usable location data.",
+      guideLink: "Not sure where to get this file? See the guide",
+    },
+    importGuide: {
+      title: "How to get your Timeline data from Google",
+      intro:
+        "Depending on when you started using Timeline, your data lives in one of two places below — try option 1 first, and fall back to option 2 if you don't see that setting.",
+      closeAria: "Close",
+      disclaimer:
+        "Google's interface can change over time, by device, and by region — menu names may differ slightly from this guide.",
+      tabPhone: "Phone (latest)",
+      tabTakeout: "Google Takeout (older data)",
+      phoneSteps: [
+        "Open the Google Maps app on your phone (Android or iOS).",
+        "Tap your profile picture in the corner → \"Your data in Maps\" or \"Timeline\".",
+        "Find and tap \"Export Timeline data\".",
+        "Save the .json file — email it to yourself, save to Drive, or transfer it to your computer.",
+        "Upload that .json file to the drop zone above.",
+      ],
+      takeoutSteps: [
+        "Go to takeout.google.com on your computer and sign in to your Google account.",
+        "Click \"Deselect all\", then check only \"Location History (Timeline)\".",
+        "Click \"Next step\", keep the .zip file type and JSON format (the defaults).",
+        "Click \"Create export\" — Google will email you when it's ready (a few minutes to a few hours).",
+        "Unzip the file, find \"Records.json\" or the \"Semantic Location History\" folder, and upload that here.",
+      ],
     },
     stats: {
       totalDistance: "Total distance",

@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { parseGoogleTimelineFile } from "@/lib/timeline/parse";
 import { TimelineData } from "@/lib/timeline/types";
 import { Icon } from "@/components/Icon";
+import ImportGuideModal from "@/components/ImportGuideModal";
 import { useLocale } from "@/components/LocaleProvider";
 
 interface FileUploadProps {
@@ -14,6 +15,7 @@ export default function FileUpload({ onLoaded }: FileUploadProps) {
   const { t } = useLocale();
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback(
@@ -85,11 +87,24 @@ export default function FileUpload({ onLoaded }: FileUploadProps) {
         {t.upload.privacy}
       </div>
 
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowGuide(true);
+        }}
+        className="relative z-10 flex items-center gap-1.5 text-xs text-(--text-muted) underline decoration-(--panel-border) underline-offset-2 transition-colors hover:text-(--accent)"
+      >
+        <Icon name="info" className="h-3.5 w-3.5 shrink-0" />
+        {t.upload.guideLink}
+      </button>
+
       {error && (
         <p className="max-w-md rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300">
           {error}
         </p>
       )}
+
+      {showGuide && <ImportGuideModal onClose={() => setShowGuide(false)} />}
     </div>
   );
 }
