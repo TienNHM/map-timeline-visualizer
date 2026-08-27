@@ -31,10 +31,20 @@ export interface TripSummary {
 // treated as one continuous outing rather than separate trips — a red light, a brief
 // shop stop, or an activity-type change (walk -> motorcycle) mid-errand all fragment
 // Google's own semantic data into several short Trip segments a few minutes apart, and
-// showing each as its own "trip" reads as noise rather than the actual journey. A
-// longer gap (a real stop — arriving home, at work, at a restaurant) still splits trips
-// as expected, since that's a deliberate destination, not an artifact of the data.
-const MERGE_GAP_MS = 20 * 60 * 1000;
+// showing each as its own "trip" reads as noise rather than the actual journey.
+const SHORT_MERGE_GAP_MS = 20 * 60 * 1000;
+
+// A longer stop still merges as long as the place in between was never actually
+// identified (Google's "UNKNOWN" semantic type, no name/address) — that's typically an
+// uncertain GPS cluster from heavy traffic or a signal dropout, not a real destination,
+// so a 90-minute "stop" there shouldn't read as "went there on purpose and left" the
+// way stopping at a named place does. The span is still capped, rather than uncapped,
+// so an unnamed gap doesn't merge legs arbitrarily far apart.
+const MAX_UNNAMED_MERGE_SPAN_MS = 4 * 60 * 60 * 1000;
+
+function isNamedVisit(v: Visit): boolean {
+  return !!v.placeName || !!v.address || (!!v.semanticType && v.semanticType !== "UNKNOWN");
+}
 
 interface TripGroup {
   legs: Trip[];
@@ -71,11 +81,13 @@ function dominantActivity(legs: Trip[]): string | undefined {
 
 /**
  * Groups the raw trip/visit segments into a display-friendly list of trips: consecutive
- * Trip legs separated by no more than MERGE_GAP_MS are merged into one, and each is
- * labeled with where it started and ended. A trip's endpoint label comes from the
- * nearest visit directly adjoining the merged group — if there's no visit between it
- * and the next/previous trip (a gap in the semantic data), the label falls back to raw
- * coordinates rather than guessing a name from an unrelated, more distant visit.
+ * Trip legs are merged into one whenever the stop between them was brief (regardless of
+ * place) or, for a longer stop, wasn't at an actually-identified place — see
+ * SHORT_MERGE_GAP_MS / MAX_UNNAMED_MERGE_SPAN_MS. Each merged trip is labeled with where
+ * it started and ended: the nearest visit directly adjoining the group — if there's no
+ * visit between it and the next/previous trip (a gap in the semantic data), the label
+ * falls back to raw coordinates rather than guessing a name from an unrelated, more
+ * distant visit.
  */
 export function buildTripSummaries(segments: TimelineSegment[]): TripSummary[] {
   const sorted = [...segments].sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -86,9 +98,21 @@ export function buildTripSummaries(segments: TimelineSegment[]): TripSummary[] {
 
     const lastGroup = groups[groups.length - 1];
     const lastLeg = lastGroup?.legs[lastGroup.legs.length - 1];
-    const gapMs = lastLeg ? new Date(segment.startTime).getTime() - new Date(lastLeg.endTime).getTime() : Infinity;
 
-    if (lastGroup && gapMs <= MERGE_GAP_MS) {
+    let shouldMerge = false;
+    if (lastGroup && lastLeg) {
+      const gapMs = new Date(segment.startTime).getTime() - new Date(lastLeg.endTime).getTime();
+      if (gapMs <= SHORT_MERGE_GAP_MS) {
+        shouldMerge = true;
+      } else if (gapMs <= MAX_UNNAMED_MERGE_SPAN_MS) {
+        const hasNamedStopBetween = sorted
+          .slice(lastGroup.lastIndex + 1, i)
+          .some((s) => isVisit(s) && isNamedVisit(s));
+        shouldMerge = !hasNamedStopBetween;
+      }
+    }
+
+    if (lastGroup && shouldMerge) {
       lastGroup.legs.push(segment);
       lastGroup.lastIndex = i;
     } else {
