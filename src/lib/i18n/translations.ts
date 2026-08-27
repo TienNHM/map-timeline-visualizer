@@ -69,6 +69,7 @@ export interface Translations {
     stats: string;
     trips: string;
     calendar: string;
+    ai: string;
   };
   calendar: {
     prevAria: string;
@@ -76,6 +77,19 @@ export interface Translations {
   };
   heatmap: {
     toggleLabel: string;
+  };
+  ai: {
+    title: string;
+    unavailableTitle: string;
+    unavailableBody: string;
+    checking: string;
+    inputPlaceholder: string;
+    sendAria: string;
+    suggestionsLabel: string;
+    suggestions: string[];
+    errorMessage: string;
+    thinking: string;
+    emptyRangeMessage: string;
   };
   lifeMap: {
     openButton: string;
@@ -216,6 +230,7 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
       stats: "Thống kê",
       trips: "Chuyến đi",
       calendar: "Lịch",
+      ai: "Trợ lý AI",
     },
     calendar: {
       prevAria: "Tháng trước",
@@ -223,6 +238,24 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     },
     heatmap: {
       toggleLabel: "Bật/tắt bản đồ nhiệt",
+    },
+    ai: {
+      title: "Hỏi về hành trình của bạn",
+      unavailableTitle: "Trợ lý AI chưa khả dụng",
+      unavailableBody:
+        "Tính năng này dùng mô hình AI chạy ngay trên trình duyệt (Chrome/Edge bản mới) — không gửi dữ liệu ra ngoài. Trình duyệt hoặc thiết bị hiện tại chưa hỗ trợ, hoặc mô hình chưa sẵn sàng.",
+      checking: "Đang kiểm tra AI cục bộ...",
+      inputPlaceholder: "Hỏi điều gì đó về hành trình của bạn...",
+      sendAria: "Gửi",
+      suggestionsLabel: "Gợi ý",
+      suggestions: [
+        "Tôi dành phần lớn thời gian ở đâu?",
+        "Ngày nào tôi di chuyển nhiều nhất?",
+        "Tóm tắt hành trình của tôi",
+      ],
+      errorMessage: "Không thể tạo câu trả lời. Vui lòng thử lại.",
+      thinking: "Đang suy nghĩ...",
+      emptyRangeMessage: "Chưa có dữ liệu trong khoảng thời gian đang chọn.",
     },
     lifeMap: {
       openButton: "Hành trình của tôi",
@@ -361,6 +394,7 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
       stats: "Stats",
       trips: "Trips",
       calendar: "Calendar",
+      ai: "AI Assistant",
     },
     calendar: {
       prevAria: "Previous month",
@@ -368,6 +402,24 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     },
     heatmap: {
       toggleLabel: "Toggle heatmap",
+    },
+    ai: {
+      title: "Ask about your timeline",
+      unavailableTitle: "AI assistant unavailable",
+      unavailableBody:
+        "This feature uses an AI model that runs entirely in your browser (recent Chrome/Edge) — nothing is sent anywhere. Your current browser or device doesn't support it, or the model isn't ready yet.",
+      checking: "Checking for on-device AI...",
+      inputPlaceholder: "Ask something about your timeline...",
+      sendAria: "Send",
+      suggestionsLabel: "Suggested",
+      suggestions: [
+        "Where did I spend most of my time?",
+        "Which day did I travel the most?",
+        "Summarize my timeline",
+      ],
+      errorMessage: "Couldn't generate a response. Please try again.",
+      thinking: "Thinking...",
+      emptyRangeMessage: "No data in the currently selected date range.",
     },
     lifeMap: {
       openButton: "My Life Map",

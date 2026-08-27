@@ -7,6 +7,7 @@ import TimelineSlider from "@/components/TimelineSlider";
 import StatsPanel from "@/components/StatsPanel";
 import TripsPanel from "@/components/TripsPanel";
 import CalendarView from "@/components/CalendarView";
+import AIPanel from "@/components/AIPanel";
 import LifeMapModal from "@/components/LifeMapModal";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import StyleSwitcher from "@/components/StyleSwitcher";
@@ -51,7 +52,7 @@ export default function Home() {
   const [replayFrame, setReplayFrame] = useState<ReplayFrame | null>(null);
   const [cameraMode, setCameraMode] = useState<CameraMode>("steady");
   const [accuracyLimit, setAccuracyLimit] = useState<number | null>(DEFAULT_ACCURACY_LIMIT_METERS);
-  const [panelTab, setPanelTab] = useState<"stats" | "trips" | "calendar">("stats");
+  const [panelTab, setPanelTab] = useState<"stats" | "trips" | "calendar" | "ai">("stats");
   const [focusBounds, setFocusBounds] = useState<FocusBounds | null>(null);
   const [showLifeMap, setShowLifeMap] = useState(false);
   const focusTokenRef = useRef(0);
@@ -229,10 +230,10 @@ export default function Home() {
           </div>
           <aside className="scroll-thin flex w-full flex-col gap-3 sm:gap-4 lg:w-96 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             <div className="glass-panel p-1 sm:p-1.5">
-              <div className="grid grid-cols-3 gap-1">
+              <div className="grid grid-cols-4 gap-1">
                 <button
                   onClick={() => setPanelTab("stats")}
-                  className={`rounded-[0.6rem] px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-[0.6rem] px-2 py-1.5 text-xs font-medium transition-colors ${
                     panelTab === "stats" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
                   }`}
                 >
@@ -240,7 +241,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => setPanelTab("trips")}
-                  className={`rounded-[0.6rem] px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-[0.6rem] px-2 py-1.5 text-xs font-medium transition-colors ${
                     panelTab === "trips" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
                   }`}
                 >
@@ -248,11 +249,19 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => setPanelTab("calendar")}
-                  className={`rounded-[0.6rem] px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-[0.6rem] px-2 py-1.5 text-xs font-medium transition-colors ${
                     panelTab === "calendar" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
                   }`}
                 >
                   {t.panelTabs.calendar}
+                </button>
+                <button
+                  onClick={() => setPanelTab("ai")}
+                  className={`rounded-[0.6rem] px-2 py-1.5 text-xs font-medium transition-colors ${
+                    panelTab === "ai" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
+                  }`}
+                >
+                  {t.panelTabs.ai}
                 </button>
               </div>
             </div>
@@ -267,6 +276,7 @@ export default function Home() {
                   onSelectDay={handleSelectDay}
                 />
               )}
+              {panelTab === "ai" && <AIPanel segments={filteredSegments} />}
             </div>
           </aside>
         </main>
