@@ -68,6 +68,11 @@ export interface Translations {
   panelTabs: {
     stats: string;
     trips: string;
+    calendar: string;
+  };
+  calendar: {
+    prevAria: string;
+    nextAria: string;
   };
   trips: {
     title: string;
@@ -193,6 +198,11 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     panelTabs: {
       stats: "Thống kê",
       trips: "Chuyến đi",
+      calendar: "Lịch",
+    },
+    calendar: {
+      prevAria: "Tháng trước",
+      nextAria: "Tháng sau",
     },
     trips: {
       title: "Danh sách chuyến đi",
@@ -316,6 +326,11 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     panelTabs: {
       stats: "Stats",
       trips: "Trips",
+      calendar: "Calendar",
+    },
+    calendar: {
+      prevAria: "Previous month",
+      nextAria: "Next month",
     },
     trips: {
       title: "Trip list",

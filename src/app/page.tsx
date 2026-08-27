@@ -6,6 +6,7 @@ import MapView, { FocusBounds } from "@/components/MapView";
 import TimelineSlider from "@/components/TimelineSlider";
 import StatsPanel from "@/components/StatsPanel";
 import TripsPanel from "@/components/TripsPanel";
+import CalendarView from "@/components/CalendarView";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import StyleSwitcher from "@/components/StyleSwitcher";
 import LocaleSwitcher from "@/components/LocaleSwitcher";
@@ -15,6 +16,7 @@ import { Icon } from "@/components/Icon";
 import { useLocale } from "@/components/LocaleProvider";
 import { TimelineData } from "@/lib/timeline/types";
 import { computeStats, segmentsWithinRange } from "@/lib/timeline/stats";
+import { computeAnalytics } from "@/lib/timeline/analytics";
 import { CameraMode, ReplayFrame } from "@/lib/timeline/replay";
 import { filterByAccuracy } from "@/lib/timeline/accuracy";
 import { boundsOf } from "@/lib/timeline/geo";
@@ -48,7 +50,7 @@ export default function Home() {
   const [replayFrame, setReplayFrame] = useState<ReplayFrame | null>(null);
   const [cameraMode, setCameraMode] = useState<CameraMode>("steady");
   const [accuracyLimit, setAccuracyLimit] = useState<number | null>(DEFAULT_ACCURACY_LIMIT_METERS);
-  const [panelTab, setPanelTab] = useState<"stats" | "trips">("stats");
+  const [panelTab, setPanelTab] = useState<"stats" | "trips" | "calendar">("stats");
   const [focusBounds, setFocusBounds] = useState<FocusBounds | null>(null);
   const focusTokenRef = useRef(0);
 
@@ -99,6 +101,27 @@ export default function Home() {
       }),
     [filteredSegments, filteredRawTrack, data]
   );
+
+  // Full data span (not the current date-range selection) so the calendar can browse
+  // and re-select any day the import covers, independent of what's currently filtered.
+  const dailyDistanceMeters = useMemo(() => {
+    if (!data) return {};
+    const analytics = computeAnalytics(data.segments);
+    const map: Record<string, number> = {};
+    analytics.dailyStats.forEach((d) => {
+      map[d.date] = d.distanceMeters;
+    });
+    return map;
+  }, [data]);
+
+  const selectedDate = startIndex === endIndex ? (dates[startIndex] ?? null) : null;
+
+  function handleSelectDay(date: string) {
+    const idx = dates.indexOf(date);
+    if (idx < 0) return;
+    setStartIndex(idx);
+    setEndIndex(idx);
+  }
 
   function handleSelectTrip(trip: TripSummary) {
     const points = trip.path.length > 0 ? trip.path : [trip.startLocation, trip.endLocation];
@@ -195,7 +218,7 @@ export default function Home() {
           </div>
           <aside className="scroll-thin flex w-full flex-col gap-3 sm:gap-4 lg:w-96 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             <div className="glass-panel p-1 sm:p-1.5">
-              <div className="grid grid-cols-2 gap-1">
+              <div className="grid grid-cols-3 gap-1">
                 <button
                   onClick={() => setPanelTab("stats")}
                   className={`rounded-[0.6rem] px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -212,13 +235,26 @@ export default function Home() {
                 >
                   {t.panelTabs.trips}
                 </button>
+                <button
+                  onClick={() => setPanelTab("calendar")}
+                  className={`rounded-[0.6rem] px-3 py-1.5 text-xs font-medium transition-colors ${
+                    panelTab === "calendar" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
+                  }`}
+                >
+                  {t.panelTabs.calendar}
+                </button>
               </div>
             </div>
             <div className="glass-panel p-3 sm:p-4">
-              {panelTab === "stats" ? (
-                <StatsPanel stats={stats} />
-              ) : (
-                <TripsPanel segments={filteredSegments} onSelectTrip={handleSelectTrip} />
+              {panelTab === "stats" && <StatsPanel stats={stats} />}
+              {panelTab === "trips" && <TripsPanel segments={filteredSegments} onSelectTrip={handleSelectTrip} />}
+              {panelTab === "calendar" && (
+                <CalendarView
+                  dates={dates}
+                  dailyDistanceMeters={dailyDistanceMeters}
+                  selectedDate={selectedDate}
+                  onSelectDay={handleSelectDay}
+                />
               )}
             </div>
           </aside>
