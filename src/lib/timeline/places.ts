@@ -12,13 +12,36 @@ export interface PlaceMarker {
   durationMs: number;
 }
 
-// ~111m at the equator — coarse enough that repeat visits to the same real-world spot
-// (which never land on the exact same lat/lng twice) still cluster together, fine
-// enough that genuinely distinct nearby places don't get merged.
-const CLUSTER_PRECISION = 3;
+const METERS_PER_DEGREE = 111320;
 
-function coordKey(lat: number, lng: number): string {
-  return `${lat.toFixed(CLUSTER_PRECISION)},${lng.toFixed(CLUSTER_PRECISION)}`;
+/** Default clustering radius when there's no accuracy limit to derive one from. */
+const DEFAULT_CLUSTER_RADIUS_METERS = 100;
+/** However loose the accuracy limit gets, still keep genuinely distinct neighborhoods
+ * from collapsing into one marker. */
+const MAX_CLUSTER_RADIUS_METERS = 1500;
+const MIN_CLUSTER_RADIUS_METERS = 30;
+
+/**
+ * The GPS accuracy limit (see AccuracyFilter) is also the best available signal for how
+ * far apart two pings can land while still describing the same real-world visit — a
+ * looser limit means noisier location data, so place markers should cluster more
+ * aggressively too, or the map fills up with near-duplicate pins for one place (a
+ * "Home" with a 1000m accuracy limit can easily report a dozen slightly different
+ * coordinates). Re-clustering at this radius each time the limit changes is what
+ * actually reduces that noise, rather than just filtering points that were never
+ * feeding the marker count in the first place (Visit points carry no per-point
+ * accuracy reading to filter by, unlike Trip paths).
+ */
+export function clusterRadiusForAccuracyLimit(limitMeters: number | null): number {
+  if (limitMeters === null) return DEFAULT_CLUSTER_RADIUS_METERS;
+  return Math.min(MAX_CLUSTER_RADIUS_METERS, Math.max(MIN_CLUSTER_RADIUS_METERS, limitMeters));
+}
+
+function coordKey(lat: number, lng: number, radiusMeters: number): string {
+  const cellDeg = radiusMeters / METERS_PER_DEGREE;
+  const latCell = Math.round(lat / cellDeg);
+  const lngCell = Math.round(lng / cellDeg);
+  return `${latCell},${lngCell}`;
 }
 
 export function categoryForVisit(v: Visit): PlaceCategory {
@@ -55,12 +78,15 @@ function durationMs(v: Visit): number {
  * collapse into one marker regardless of where it actually happened). Each marker
  * carries the total visits/time spent there, for size-scaling the map pin.
  */
-export function buildPlaceMarkers(segments: TimelineSegment[]): PlaceMarker[] {
+export function buildPlaceMarkers(
+  segments: TimelineSegment[],
+  clusterRadiusMeters: number = DEFAULT_CLUSTER_RADIUS_METERS
+): PlaceMarker[] {
   const clusters = new Map<string, Cluster>();
 
   for (const segment of segments) {
     if (!isVisit(segment)) continue;
-    const key = coordKey(segment.location.lat, segment.location.lng);
+    const key = coordKey(segment.location.lat, segment.location.lng, clusterRadiusMeters);
     const rank = CATEGORY_RANK[categoryForVisit(segment)];
 
     let cluster = clusters.get(key);

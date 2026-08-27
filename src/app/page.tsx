@@ -272,6 +272,7 @@ export default function Home() {
                   focusBounds={focusBounds}
                   showHeatmap={showHeatmap}
                   onToggleHeatmap={() => setShowHeatmap((v) => !v)}
+                  accuracyLimit={accuracyLimit}
                 />
               </div>
             </div>

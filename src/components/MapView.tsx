@@ -7,7 +7,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { TimelineSegment, TrackPoint } from "@/lib/timeline/types";
 import { boundsOf } from "@/lib/timeline/geo";
 import { isTrip, isVisit } from "@/lib/timeline/stats";
-import { buildPlaceMarkers, PlaceCategory } from "@/lib/timeline/places";
+import { buildPlaceMarkers, clusterRadiusForAccuracyLimit, PlaceCategory } from "@/lib/timeline/places";
 import { CameraMode, ReplayFrame } from "@/lib/timeline/replay";
 import { useTheme } from "@/components/ThemeProvider";
 import { useLocale } from "@/components/LocaleProvider";
@@ -43,6 +43,9 @@ interface MapViewProps {
   focusBounds?: FocusBounds | null;
   showHeatmap?: boolean;
   onToggleHeatmap?: () => void;
+  /** Drives how aggressively nearby visits are clustered into one place marker — see
+   * clusterRadiusForAccuracyLimit's doc comment for why this reuses the accuracy setting. */
+  accuracyLimit?: number | null;
 }
 
 interface DynamicCameraState {
@@ -67,6 +70,7 @@ export default function MapView({
   focusBounds = null,
   showHeatmap = false,
   onToggleHeatmap,
+  accuracyLimit = null,
 }: MapViewProps) {
   const { themeId, isLight, themes } = useTheme();
   const { t } = useLocale();
@@ -81,6 +85,7 @@ export default function MapView({
   const dynamicCamRef = useRef<DynamicCameraState>({ center: null, zoom: null, bearing: 0 });
   const showHeatmapRef = useRef(showHeatmap);
   const localeRef = useRef(t);
+  const clusterRadiusRef = useRef(clusterRadiusForAccuracyLimit(accuracyLimit));
 
   useEffect(() => {
     localeRef.current = t;
@@ -89,7 +94,8 @@ export default function MapView({
   useEffect(() => {
     segmentsRef.current = segments;
     rawTrackRef.current = rawTrack;
-  }, [segments, rawTrack]);
+    clusterRadiusRef.current = clusterRadiusForAccuracyLimit(accuracyLimit);
+  }, [segments, rawTrack, accuracyLimit]);
 
   useEffect(() => {
     replayFrameRef.current = replayFrame;
@@ -116,7 +122,7 @@ export default function MapView({
       // is swapped for a different theme's tint.
       map.on("style.load", () => {
         setupOverlayLayers(map, colorsRef.current);
-        renderData(map, segmentsRef.current, rawTrackRef.current, { fit: !hasFitRef.current });
+        renderData(map, segmentsRef.current, rawTrackRef.current, clusterRadiusRef.current, { fit: !hasFitRef.current });
         hasFitRef.current = true;
         renderReplayFrame(map, replayFrameRef.current, { pan: false });
         setHeatmapVisible(map, showHeatmapRef.current);
@@ -163,9 +169,9 @@ export default function MapView({
 
   useEffect(() => {
     if (mapRef.current) {
-      renderData(mapRef.current, segments, rawTrack, { fit: true });
+      renderData(mapRef.current, segments, rawTrack, clusterRadiusForAccuracyLimit(accuracyLimit), { fit: true });
     }
-  }, [segments, rawTrack]);
+  }, [segments, rawTrack, accuracyLimit]);
 
   useEffect(() => {
     const nextColors = themeColors(themeId, isLight, themes);
@@ -612,6 +618,7 @@ function renderData(
   map: MapLibreMap,
   segments: TimelineSegment[],
   rawTrack: TrackPoint[],
+  clusterRadiusMeters: number,
   options: { fit: boolean }
 ) {
   const rawTrackSource = map.getSource("raw-track") as GeoJSONSource | undefined;
@@ -642,7 +649,7 @@ function renderData(
     },
   }));
 
-  const placeFeatures = buildPlaceMarkers(segments).map((place) => ({
+  const placeFeatures = buildPlaceMarkers(segments, clusterRadiusMeters).map((place) => ({
     type: "Feature" as const,
     properties: {
       key: place.key,
