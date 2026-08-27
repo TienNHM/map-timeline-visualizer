@@ -18,7 +18,10 @@ import { Icon } from "@/components/Icon";
 // maplibre-gl-worker.mjs relatively imports maplibre-gl-shared.mjs, so both are copied
 // into public/maplibre (see package.json's postinstall) and served from there as-is,
 // rather than pointed at via a bundler asset URL that would drop the sibling chunk.
-maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
+// This is a hand-written root-relative path, so — unlike next/font or bundler asset
+// URLs — it doesn't automatically pick up next.config.ts's basePath on GitHub Pages;
+// NEXT_PUBLIC_BASE_PATH is inlined at build time and mirrors that same config value.
+maplibregl.setWorkerUrl(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/maplibre/maplibre-gl-worker.mjs`);
 
 export interface FocusBounds {
   bounds: [[number, number], [number, number]];
