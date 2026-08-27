@@ -58,6 +58,7 @@ export default function Home() {
   const [showLifeMap, setShowLifeMap] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [tripSortKey, setTripSortKey] = useState<TripSortKey>("date-desc");
+  const [selectedTrip, setSelectedTrip] = useState<{ id: string; legIds: string[] } | null>(null);
   const focusTokenRef = useRef(0);
 
   const dates = useMemo(() => {
@@ -96,6 +97,17 @@ export default function Home() {
     () => filterByAccuracy(dateFilteredSegments, dateFilteredRawTrack, accuracyLimit),
     [dateFilteredSegments, dateFilteredRawTrack, accuracyLimit]
   );
+
+  // Looking up by id (rather than trusting selectedTrip to still be valid) means a
+  // stale selection — e.g. the date range changed and some of that trip's legs fell out
+  // of view — just stops applying on its own instead of needing to be explicitly
+  // cleared everywhere. A merged trip can span several raw legs, so this keeps whichever
+  // of them are still present rather than requiring every single one to match.
+  const selectedTripSegments = selectedTrip
+    ? filteredSegments.filter((s) => selectedTrip.legIds.includes(s.id))
+    : [];
+  const mapSegments = selectedTripSegments.length > 0 ? selectedTripSegments : filteredSegments;
+  const mapRawTrack = selectedTripSegments.length > 0 ? [] : filteredRawTrack;
 
   const stats = useMemo(
     () =>
@@ -156,11 +168,11 @@ export default function Home() {
         break;
       }
       case "switch_tab":
-        setPanelTab(action.tab);
+        handlePanelTabChange(action.tab);
         break;
       case "sort_trips":
         setTripSortKey(action.sortBy);
-        setPanelTab("trips");
+        handlePanelTabChange("trips");
         break;
       case "toggle_heatmap":
         setShowHeatmap(action.enabled);
@@ -168,7 +180,17 @@ export default function Home() {
     }
   }
 
+  function handlePanelTabChange(tab: "stats" | "trips" | "calendar" | "ai") {
+    setPanelTab(tab);
+    if (tab !== "trips") setSelectedTrip(null);
+  }
+
   function handleSelectTrip(trip: TripSummary) {
+    if (selectedTrip?.id === trip.id) {
+      setSelectedTrip(null);
+      return;
+    }
+    setSelectedTrip({ id: trip.id, legIds: trip.legIds });
     const points = trip.path.length > 0 ? trip.path : [trip.startLocation, trip.endLocation];
     const bounds = boundsOf(points);
     if (!bounds) return;
@@ -243,8 +265,8 @@ export default function Home() {
             <div className="glass-panel flex-1 overflow-hidden p-1.5">
               <div className="h-full w-full overflow-hidden rounded-[0.9rem]">
                 <MapView
-                  segments={filteredSegments}
-                  rawTrack={filteredRawTrack}
+                  segments={mapSegments}
+                  rawTrack={mapRawTrack}
                   replayFrame={replayFrame}
                   cameraMode={cameraMode}
                   focusBounds={focusBounds}
@@ -273,10 +295,10 @@ export default function Home() {
             </div>
           </div>
           <aside className="scroll-thin flex w-full flex-col gap-3 sm:gap-4 lg:w-96 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
-            <div className="glass-panel p-1 sm:p-1.5">
+            <div className="glass-panel sticky top-0 z-10 p-1 sm:p-1.5">
               <div className="grid grid-cols-4 gap-1">
                 <button
-                  onClick={() => setPanelTab("stats")}
+                  onClick={() => handlePanelTabChange("stats")}
                   className={`rounded-[0.6rem] px-2 py-1.5 text-xs font-medium transition-colors ${
                     panelTab === "stats" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
                   }`}
@@ -284,7 +306,7 @@ export default function Home() {
                   {t.panelTabs.stats}
                 </button>
                 <button
-                  onClick={() => setPanelTab("trips")}
+                  onClick={() => handlePanelTabChange("trips")}
                   className={`rounded-[0.6rem] px-2 py-1.5 text-xs font-medium transition-colors ${
                     panelTab === "trips" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
                   }`}
@@ -292,7 +314,7 @@ export default function Home() {
                   {t.panelTabs.trips}
                 </button>
                 <button
-                  onClick={() => setPanelTab("calendar")}
+                  onClick={() => handlePanelTabChange("calendar")}
                   className={`rounded-[0.6rem] px-2 py-1.5 text-xs font-medium transition-colors ${
                     panelTab === "calendar" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
                   }`}
@@ -300,7 +322,7 @@ export default function Home() {
                   {t.panelTabs.calendar}
                 </button>
                 <button
-                  onClick={() => setPanelTab("ai")}
+                  onClick={() => handlePanelTabChange("ai")}
                   className={`rounded-[0.6rem] px-2 py-1.5 text-xs font-medium transition-colors ${
                     panelTab === "ai" ? "bg-(--panel-strong) text-(--text)" : "text-(--text-muted) hover:text-(--text)"
                   }`}
@@ -315,6 +337,7 @@ export default function Home() {
                 <TripsPanel
                   segments={filteredSegments}
                   onSelectTrip={handleSelectTrip}
+                  selectedTripId={selectedTrip?.id ?? null}
                   sortKey={tripSortKey}
                   onSortKeyChange={setTripSortKey}
                 />

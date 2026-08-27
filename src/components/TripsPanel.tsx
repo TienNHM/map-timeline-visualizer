@@ -13,11 +13,13 @@ const PAGE_SIZE = 40;
 interface TripsPanelProps {
   segments: TimelineSegment[];
   onSelectTrip: (trip: TripSummary) => void;
+  /** The currently isolated trip on the map, if any — clicking it again deselects it. */
+  selectedTripId: string | null;
   sortKey: TripSortKey;
   onSortKeyChange: (key: TripSortKey) => void;
 }
 
-export default function TripsPanel({ segments, onSelectTrip, sortKey, onSortKeyChange }: TripsPanelProps) {
+export default function TripsPanel({ segments, onSelectTrip, selectedTripId, sortKey, onSortKeyChange }: TripsPanelProps) {
   const { locale, t } = useLocale();
   const localeTag = locale === "vi" ? "vi-VN" : "en-US";
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -76,11 +78,17 @@ export default function TripsPanel({ segments, onSelectTrip, sortKey, onSortKeyC
       </div>
 
       <ul className="flex flex-col gap-2">
-        {visible.map((trip) => (
+        {visible.map((trip) => {
+          const selected = trip.id === selectedTripId;
+          return (
           <li key={trip.id}>
             <button
               onClick={() => onSelectTrip(trip)}
-              className="w-full rounded-xl border border-(--panel-border) bg-(--panel) px-3 py-2.5 text-left transition-colors hover:bg-(--panel-strong)"
+              className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                selected
+                  ? "border-(--accent) bg-(--panel-strong)"
+                  : "border-(--panel-border) bg-(--panel) hover:bg-(--panel-strong)"
+              }`}
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="stat-number text-xs text-(--text-faint)">
@@ -107,7 +115,8 @@ export default function TripsPanel({ segments, onSelectTrip, sortKey, onSortKeyC
               </div>
             </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       {visibleCount < sorted.length && (
