@@ -47,8 +47,14 @@ export default function AIPanel({ segments, onAction }: AIPanelProps) {
       const { reply, action } = parseAIResponse(raw);
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
       if (action) onAction(action);
-    } catch {
-      setMessages((m) => [...m, { role: "assistant", content: t.ai.errorMessage }]);
+    } catch (err) {
+      // Surfaced in the message itself (not just the console) since this is the only
+      // place a real user will see it — the on-device model's failure modes (context
+      // window exceeded, unsupported output language, download interrupted, etc.) are
+      // varied enough that a generic "try again" alone isn't enough to self-diagnose.
+      console.error("AI generate() failed:", err);
+      const detail = err instanceof Error ? err.message : String(err);
+      setMessages((m) => [...m, { role: "assistant", content: `${t.ai.errorMessage}${detail ? ` (${detail})` : ""}` }]);
     } finally {
       setPending(false);
     }

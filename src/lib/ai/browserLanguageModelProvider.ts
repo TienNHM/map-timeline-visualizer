@@ -14,8 +14,17 @@ interface LanguageModelStatic {
     initialPrompts?: { role: "system" | "user" | "assistant"; content: string }[];
     temperature?: number;
     topK?: number;
+    expectedInputs?: { type: "text"; languages: string[] }[];
+    expectedOutputs?: { type: "text"; languages: string[] }[];
   }): Promise<LanguageModelSession>;
 }
+
+// Chrome/Edge warns (and on some versions errors) if a prompt request doesn't declare
+// an expected language — "en" is used here regardless of the app's locale because it's
+// the language of the prompt/instructions themselves and is reliably in the supported
+// set; the system prompt separately asks the model to *answer* in the user's locale.
+// This is a best-effort declaration, not a guarantee the model's reply matches it.
+const DECLARED_LANGUAGE = [{ type: "text" as const, languages: ["en"] }];
 
 function getLanguageModel(): LanguageModelStatic | null {
   if (typeof window === "undefined") return null;
@@ -63,6 +72,8 @@ export class BrowserLanguageModelProvider implements AIProvider {
 
     const session = await model.create({
       initialPrompts: options?.systemPrompt ? [{ role: "system", content: options.systemPrompt }] : undefined,
+      expectedInputs: DECLARED_LANGUAGE,
+      expectedOutputs: DECLARED_LANGUAGE,
     });
     try {
       return await session.prompt(prompt);

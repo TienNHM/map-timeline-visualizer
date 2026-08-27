@@ -24,8 +24,11 @@ export interface AITimelineSummary {
 }
 
 /** Hard cap on how many daily entries ride along, even if the caller's segments span
- * years — keeps the prompt bounded regardless of how wide a range is currently selected. */
-const MAX_DAILY_ENTRIES = 92;
+ * years — keeps the prompt bounded regardless of how wide a range is currently selected.
+ * On-device models have a much smaller context window than a cloud model (often just a
+ * few thousand tokens), so this errs toward a compact prompt over a fully detailed one. */
+const MAX_DAILY_ENTRIES = 31;
+const MAX_TOP_AREAS = 6;
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
@@ -46,7 +49,7 @@ export function buildAISummary(segments: TimelineSegment[], t: Translations): AI
     distanceByActivityKm: Object.fromEntries(
       Object.entries(analytics.distanceByActivity).map(([activity, meters]) => [activity, round1(meters / 1000)])
     ),
-    topAreas: analytics.topAreas.slice(0, 10).map((area) => ({
+    topAreas: analytics.topAreas.slice(0, MAX_TOP_AREAS).map((area) => ({
       name: formatPlaceLabel(area.label, t),
       visits: area.visits,
       hours: round1(area.durationMs / 3600000),
