@@ -124,6 +124,37 @@ body::before {
   box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.45);
 }
 
+/* MapLibre's default popup is a plain white box — restyle it to match the app's
+   near-opaque floating-panel treatment (see .dropdown-menu) instead of looking like an
+   unstyled browser default dropped onto a themed map. */
+.maplibregl-popup.place-popup .maplibregl-popup-content {
+  background: var(--menu-solid);
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.45);
+}
+.maplibregl-popup.place-popup .maplibregl-popup-tip {
+  border-top-color: var(--menu-solid);
+  border-bottom-color: var(--menu-solid);
+}
+.maplibregl-popup.place-popup .maplibregl-popup-close-button {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  padding: 0.15rem 0.5rem;
+}
+.maplibregl-popup.place-popup .maplibregl-popup-close-button:hover {
+  color: var(--text);
+  background: transparent;
+}
+:root[data-style="brutalism"] .maplibregl-popup.place-popup .maplibregl-popup-content {
+  background: var(--bg);
+  border-width: 2px;
+  border-radius: 0;
+  box-shadow: 4px 4px 0 0 var(--text);
+}
+
 .stat-number {
   font-family: var(--font-mono), monospace;
   font-variant-numeric: tabular-nums;

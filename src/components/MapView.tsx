@@ -7,10 +7,14 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { TimelineSegment, TrackPoint } from "@/lib/timeline/types";
 import { boundsOf } from "@/lib/timeline/geo";
 import { isTrip, isVisit } from "@/lib/timeline/stats";
+import { buildPlaceMarkers, PlaceCategory } from "@/lib/timeline/places";
 import { CameraMode, ReplayFrame } from "@/lib/timeline/replay";
 import { useTheme } from "@/components/ThemeProvider";
 import { useLocale } from "@/components/LocaleProvider";
+import { Translations } from "@/lib/i18n/translations";
 import { loadTintedStyle } from "@/lib/mapTint";
+import { buildPinImageData } from "@/lib/mapPins";
+import { formatHours, formatPlaceLabel } from "@/lib/timeline/format";
 import { Icon } from "@/components/Icon";
 
 // MapLibre's default worker auto-detection breaks when bundled by Next.js, leaving
@@ -76,6 +80,11 @@ export default function MapView({
   const styleGenerationRef = useRef(0);
   const dynamicCamRef = useRef<DynamicCameraState>({ center: null, zoom: null, bearing: 0 });
   const showHeatmapRef = useRef(showHeatmap);
+  const localeRef = useRef(t);
+
+  useEffect(() => {
+    localeRef.current = t;
+  }, [t]);
 
   useEffect(() => {
     segmentsRef.current = segments;
@@ -113,6 +122,12 @@ export default function MapView({
         setHeatmapVisible(map, showHeatmapRef.current);
         setStaticLayersDimmed(map, !!replayFrameRef.current || showHeatmapRef.current);
       });
+
+      // Bound once — the Map instance survives setStyle() (theme changes), unlike the
+      // layers/sources/images setupOverlayLayers re-creates each time, so this doesn't
+      // need to be re-attached from style.load. localeRef keeps the popup's text
+      // current without needing to rebind when the locale changes.
+      bindPlacePopup(map, localeRef);
 
       mapRef.current = map;
     });
@@ -255,18 +270,30 @@ function setupOverlayLayers(map: MapLibreMap, colors: OverlayColors) {
     });
   }
 
+  registerPinImages(map, colors);
+
   if (!map.getSource("visits")) {
     map.addSource("visits", { type: "geojson", data: EMPTY_FC });
     map.addLayer({
-      id: "visits-circle",
-      type: "circle",
+      id: "places-symbol",
+      type: "symbol",
       source: "visits",
-      paint: {
-        "circle-radius": 5,
-        "circle-color": colors.accent2,
-        "circle-opacity": 1,
-        "circle-stroke-width": 2,
-        "circle-stroke-color": colors.isLight ? "#ffffff" : "#0b0b12",
+      layout: {
+        "icon-image": ["concat", "pin-", ["get", "category"]],
+        // A place visited/lived-in far more than others should read as visually more
+        // important, but linearly scaling with hours would make "Home" enormous and
+        // everything else a speck — these stops taper off instead of growing forever.
+        "icon-size": [
+          "interpolate", ["linear"], ["get", "weight"],
+          0, 0.35,
+          1, 0.5,
+          5, 0.65,
+          20, 0.8,
+          100, 1,
+          1000, 1.3,
+        ],
+        "icon-anchor": "bottom",
+        "icon-allow-overlap": true,
       },
     });
   }
@@ -338,6 +365,56 @@ function setupOverlayLayers(map: MapLibreMap, colors: OverlayColors) {
   }
 }
 
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Shows a themed popup with the place's name, visit count, and total time spent there
+ * when its pin is clicked — otherwise that's only visible by digging into the Stats tab. */
+function bindPlacePopup(map: MapLibreMap, localeRef: { current: Translations }) {
+  map.on("mouseenter", "places-symbol", () => {
+    map.getCanvas().style.cursor = "pointer";
+  });
+  map.on("mouseleave", "places-symbol", () => {
+    map.getCanvas().style.cursor = "";
+  });
+  map.on("click", "places-symbol", (e) => {
+    const feature = e.features?.[0];
+    if (!feature || feature.geometry.type !== "Point") return;
+    const props = feature.properties as { label: string; visitCount: number; durationMs: number };
+    const t = localeRef.current;
+    const coordinates = feature.geometry.coordinates.slice(0, 2) as [number, number];
+
+    const html = `
+      <div style="font:600 13px/1.3 sans-serif;margin-bottom:4px;">${escapeHtml(formatPlaceLabel(props.label, t))}</div>
+      <div style="font:12px/1.4 sans-serif;opacity:0.75;">${props.visitCount} ${escapeHtml(t.mapPopup.visits)}</div>
+      <div style="font:12px/1.4 sans-serif;opacity:0.75;">${escapeHtml(t.mapPopup.timeSpent)}: ${formatHours(props.durationMs)}</div>
+    `;
+
+    new maplibregl.Popup({ closeButton: true, closeOnClick: true, offset: 18, className: "place-popup" })
+      .setLngLat(coordinates)
+      .setHTML(html)
+      .addTo(map);
+  });
+}
+
+const PIN_CATEGORIES: PlaceCategory[] = ["home", "work", "named", "unknown"];
+
+/** (Re-)registers the category pin icons with the current theme's colors. Images live
+ * on the style object, so setStyle() (a theme change) wipes them — this is called from
+ * setupOverlayLayers, which already re-runs on every style.load for the same reason. */
+function registerPinImages(map: MapLibreMap, colors: OverlayColors) {
+  for (const category of PIN_CATEGORIES) {
+    const id = `pin-${category}`;
+    if (map.hasImage(id)) map.removeImage(id);
+    map.addImage(id, buildPinImageData(category, colors.accent, colors.accent2), { pixelRatio: 2 });
+  }
+}
+
 /** Zoom is never allowed to ease past these, regardless of how the leg's bounds fit —
  * MAX keeps near-stationary legs (two almost-identical points) from snapping to an
  * absurdly tight street-level zoom, MIN keeps a rare intercontinental jump readable
@@ -402,7 +479,7 @@ const STATIC_LAYER_OPACITY = {
 function setStaticLayersDimmed(map: MapLibreMap, dimmed: boolean) {
   const opacity = dimmed ? STATIC_LAYER_OPACITY.dimmed : STATIC_LAYER_OPACITY.full;
   if (map.getLayer("trips-line")) map.setPaintProperty("trips-line", "line-opacity", opacity.trips);
-  if (map.getLayer("visits-circle")) map.setPaintProperty("visits-circle", "circle-opacity", opacity.visits);
+  if (map.getLayer("places-symbol")) map.setPaintProperty("places-symbol", "icon-opacity", opacity.visits);
   if (map.getLayer("raw-track-line")) map.setPaintProperty("raw-track-line", "line-opacity", opacity.rawTrack);
 }
 
@@ -565,15 +642,21 @@ function renderData(
     },
   }));
 
-  const visitFeatures = segments.filter(isVisit).map((visit) => ({
+  const placeFeatures = buildPlaceMarkers(segments).map((place) => ({
     type: "Feature" as const,
     properties: {
-      id: visit.id,
-      label: visit.placeName ?? visit.semanticType ?? "Visit",
+      key: place.key,
+      label: place.label,
+      category: place.category,
+      visitCount: place.visitCount,
+      durationMs: place.durationMs,
+      // icon-size scales off this — hours spent, not raw ms, keeps the interpolation
+      // stops in registerPinImages' caller (setupOverlayLayers) human-scaled.
+      weight: place.durationMs / 3600000,
     },
     geometry: {
       type: "Point" as const,
-      coordinates: [visit.location.lng, visit.location.lat],
+      coordinates: [place.location.lng, place.location.lat],
     },
   }));
 
@@ -581,7 +664,7 @@ function renderData(
   tripSource?.setData({ type: "FeatureCollection", features: tripFeatures });
 
   const visitSource = map.getSource("visits") as GeoJSONSource | undefined;
-  visitSource?.setData({ type: "FeatureCollection", features: visitFeatures });
+  visitSource?.setData({ type: "FeatureCollection", features: placeFeatures });
 
   const heatmapSource = map.getSource("heatmap-points") as GeoJSONSource | undefined;
   heatmapSource?.setData(buildHeatmapFeatures(segments, rawTrack));

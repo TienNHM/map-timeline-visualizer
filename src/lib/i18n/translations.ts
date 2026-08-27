@@ -78,6 +78,10 @@ export interface Translations {
   heatmap: {
     toggleLabel: string;
   };
+  mapPopup: {
+    visits: string;
+    timeSpent: string;
+  };
   ai: {
     title: string;
     unavailableTitle: string;
@@ -238,6 +242,10 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     },
     heatmap: {
       toggleLabel: "Bật/tắt bản đồ nhiệt",
+    },
+    mapPopup: {
+      visits: "lượt ghé",
+      timeSpent: "Tổng thời gian",
     },
     ai: {
       title: "Hỏi về hành trình của bạn",
@@ -402,6 +410,10 @@ export const TRANSLATIONS: Record<Locale, Translations> = {
     },
     heatmap: {
       toggleLabel: "Toggle heatmap",
+    },
+    mapPopup: {
+      visits: "visits",
+      timeSpent: "Total time",
     },
     ai: {
       title: "Ask about your timeline",
