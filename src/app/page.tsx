@@ -22,7 +22,8 @@ import { computeAnalytics } from "@/lib/timeline/analytics";
 import { CameraMode, ReplayFrame } from "@/lib/timeline/replay";
 import { filterByAccuracy } from "@/lib/timeline/accuracy";
 import { boundsOf } from "@/lib/timeline/geo";
-import { TripSummary } from "@/lib/timeline/trips";
+import { TripSortKey, TripSummary } from "@/lib/timeline/trips";
+import { AIAction } from "@/lib/ai/actions";
 
 function toDateKey(iso: string): string {
   return iso.slice(0, 10);
@@ -55,6 +56,8 @@ export default function Home() {
   const [panelTab, setPanelTab] = useState<"stats" | "trips" | "calendar" | "ai">("stats");
   const [focusBounds, setFocusBounds] = useState<FocusBounds | null>(null);
   const [showLifeMap, setShowLifeMap] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [tripSortKey, setTripSortKey] = useState<TripSortKey>("date-desc");
   const focusTokenRef = useRef(0);
 
   const dates = useMemo(() => {
@@ -124,6 +127,45 @@ export default function Home() {
     if (idx < 0) return;
     setStartIndex(idx);
     setEndIndex(idx);
+  }
+
+  // Unlike handleSelectDay (used by the calendar, which only ever offers dates that
+  // exist), the AI assistant can name a date the import doesn't have data for — snap to
+  // the nearest available date instead of silently doing nothing.
+  function nearestDateIndex(target: string): number {
+    if (dates.length === 0) return -1;
+    const idx = dates.findIndex((d) => d >= target);
+    return idx === -1 ? dates.length - 1 : idx;
+  }
+
+  function handleAIAction(action: AIAction) {
+    switch (action.type) {
+      case "select_day": {
+        const idx = nearestDateIndex(action.date);
+        if (idx < 0) return;
+        setStartIndex(idx);
+        setEndIndex(idx);
+        break;
+      }
+      case "select_range": {
+        const startIdx = nearestDateIndex(action.start);
+        const endIdx = nearestDateIndex(action.end);
+        if (startIdx < 0 || endIdx < 0) return;
+        setStartIndex(Math.min(startIdx, endIdx));
+        setEndIndex(Math.max(startIdx, endIdx));
+        break;
+      }
+      case "switch_tab":
+        setPanelTab(action.tab);
+        break;
+      case "sort_trips":
+        setTripSortKey(action.sortBy);
+        setPanelTab("trips");
+        break;
+      case "toggle_heatmap":
+        setShowHeatmap(action.enabled);
+        break;
+    }
   }
 
   function handleSelectTrip(trip: TripSummary) {
@@ -206,6 +248,8 @@ export default function Home() {
                   replayFrame={replayFrame}
                   cameraMode={cameraMode}
                   focusBounds={focusBounds}
+                  showHeatmap={showHeatmap}
+                  onToggleHeatmap={() => setShowHeatmap((v) => !v)}
                 />
               </div>
             </div>
@@ -267,7 +311,14 @@ export default function Home() {
             </div>
             <div className="glass-panel p-3 sm:p-4">
               {panelTab === "stats" && <StatsPanel stats={stats} />}
-              {panelTab === "trips" && <TripsPanel segments={filteredSegments} onSelectTrip={handleSelectTrip} />}
+              {panelTab === "trips" && (
+                <TripsPanel
+                  segments={filteredSegments}
+                  onSelectTrip={handleSelectTrip}
+                  sortKey={tripSortKey}
+                  onSortKeyChange={setTripSortKey}
+                />
+              )}
               {panelTab === "calendar" && (
                 <CalendarView
                   dates={dates}
@@ -276,7 +327,7 @@ export default function Home() {
                   onSelectDay={handleSelectDay}
                 />
               )}
-              {panelTab === "ai" && <AIPanel segments={filteredSegments} />}
+              {panelTab === "ai" && <AIPanel segments={filteredSegments} onAction={handleAIAction} />}
             </div>
           </aside>
         </main>

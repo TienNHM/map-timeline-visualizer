@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -34,6 +34,8 @@ interface MapViewProps {
   cameraMode?: CameraMode;
   /** When set, the map fits to these bounds (e.g. a trip selected from the trip list). */
   focusBounds?: FocusBounds | null;
+  showHeatmap?: boolean;
+  onToggleHeatmap?: () => void;
 }
 
 interface DynamicCameraState {
@@ -56,6 +58,8 @@ export default function MapView({
   replayFrame = null,
   cameraMode = "steady",
   focusBounds = null,
+  showHeatmap = false,
+  onToggleHeatmap,
 }: MapViewProps) {
   const { themeId, isLight, themes } = useTheme();
   const { t } = useLocale();
@@ -68,7 +72,6 @@ export default function MapView({
   const hasFitRef = useRef(false);
   const styleGenerationRef = useRef(0);
   const dynamicCamRef = useRef<DynamicCameraState>({ center: null, zoom: null, bearing: 0 });
-  const [showHeatmap, setShowHeatmap] = useState(false);
   const showHeatmapRef = useRef(showHeatmap);
 
   useEffect(() => {
@@ -201,7 +204,7 @@ export default function MapView({
     <div className={`relative h-full w-full ${isLight ? "" : "map-dark-tiles"}`}>
       <div ref={containerRef} className="h-full min-h-100 w-full" />
       <button
-        onClick={() => setShowHeatmap((v) => !v)}
+        onClick={onToggleHeatmap}
         aria-pressed={showHeatmap}
         title={t.heatmap.toggleLabel}
         className={`absolute top-3 left-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-(--panel-border) bg-(--panel) shadow-lg transition-colors ${

@@ -2,26 +2,35 @@
 
 import { useMemo, useState } from "react";
 import { TimelineSegment } from "@/lib/timeline/types";
-import { buildTripSummaries, TripSummary } from "@/lib/timeline/trips";
+import { buildTripSummaries, TripSortKey, TripSummary } from "@/lib/timeline/trips";
 import { formatActivity, formatDateTime, formatKm, formatPlaceLabel } from "@/lib/timeline/format";
 import { Icon } from "@/components/Icon";
 import Dropdown, { DropdownOption } from "@/components/Dropdown";
 import { useLocale } from "@/components/LocaleProvider";
-
-type SortKey = "date-desc" | "date-asc" | "distance-desc";
 
 const PAGE_SIZE = 40;
 
 interface TripsPanelProps {
   segments: TimelineSegment[];
   onSelectTrip: (trip: TripSummary) => void;
+  sortKey: TripSortKey;
+  onSortKeyChange: (key: TripSortKey) => void;
 }
 
-export default function TripsPanel({ segments, onSelectTrip }: TripsPanelProps) {
+export default function TripsPanel({ segments, onSelectTrip, sortKey, onSortKeyChange }: TripsPanelProps) {
   const { locale, t } = useLocale();
   const localeTag = locale === "vi" ? "vi-VN" : "en-US";
-  const [sortKey, setSortKey] = useState<SortKey>("date-desc");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Resets pagination whenever the sort changes — including when the AI assistant
+  // changes it, not just the dropdown below. Adjusted during render (React's documented
+  // pattern for resetting state when a prop changes) rather than in an effect, so it
+  // takes effect in the same render instead of causing an extra one.
+  const [prevSortKey, setPrevSortKey] = useState(sortKey);
+  if (sortKey !== prevSortKey) {
+    setPrevSortKey(sortKey);
+    setVisibleCount(PAGE_SIZE);
+  }
 
   const trips = useMemo(() => buildTripSummaries(segments), [segments]);
 
@@ -38,7 +47,7 @@ export default function TripsPanel({ segments, onSelectTrip }: TripsPanelProps) 
     }
   }, [trips, sortKey]);
 
-  const sortOptions: DropdownOption<SortKey>[] = [
+  const sortOptions: DropdownOption<TripSortKey>[] = [
     { value: "date-desc", label: t.trips.sortNewest },
     { value: "date-asc", label: t.trips.sortOldest },
     { value: "distance-desc", label: t.trips.sortDistance },
@@ -59,10 +68,7 @@ export default function TripsPanel({ segments, onSelectTrip }: TripsPanelProps) 
         <Dropdown
           value={sortKey}
           options={sortOptions}
-          onChange={(v) => {
-            setSortKey(v);
-            setVisibleCount(PAGE_SIZE);
-          }}
+          onChange={onSortKeyChange}
           menuLabel={t.trips.sortLabel}
           triggerClassName="flex items-center gap-1.5 rounded-full border border-(--panel-border) bg-(--panel) px-2.5 py-1 text-xs text-(--text-muted) transition-colors hover:text-(--text)"
           renderTrigger={(current) => <span>{current.label}</span>}

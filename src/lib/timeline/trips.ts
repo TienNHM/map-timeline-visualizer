@@ -1,6 +1,8 @@
 import { LatLng, TimelineSegment, TrackPoint, Visit } from "./types";
 import { isTrip, isVisit, visitLabel } from "./stats";
 
+export type TripSortKey = "date-desc" | "date-asc" | "distance-desc";
+
 export interface TripSummary {
   id: string;
   /** 1-based order within the chronological trip sequence of the given segments. */

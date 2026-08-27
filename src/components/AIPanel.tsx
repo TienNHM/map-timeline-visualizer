@@ -6,6 +6,7 @@ import { useLocale } from "@/components/LocaleProvider";
 import { useAIProvider } from "@/lib/ai/useAIProvider";
 import { buildAISummary } from "@/lib/ai/summary";
 import { buildSystemPrompt } from "@/lib/ai/prompt";
+import { AIAction, parseAIResponse } from "@/lib/ai/actions";
 import { Icon } from "@/components/Icon";
 
 interface ChatMessage {
@@ -15,11 +16,12 @@ interface ChatMessage {
 
 interface AIPanelProps {
   segments: TimelineSegment[];
+  onAction: (action: AIAction) => void;
 }
 
 const LANGUAGE_NAMES: Record<string, string> = { vi: "Vietnamese", en: "English" };
 
-export default function AIPanel({ segments }: AIPanelProps) {
+export default function AIPanel({ segments, onAction }: AIPanelProps) {
   const { locale, t } = useLocale();
   const { provider, available } = useAIProvider();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -41,8 +43,10 @@ export default function AIPanel({ segments }: AIPanelProps) {
     setPending(true);
     try {
       const systemPrompt = buildSystemPrompt(summary, LANGUAGE_NAMES[locale] ?? "English");
-      const reply = await provider.generate(q, { systemPrompt });
+      const raw = await provider.generate(q, { systemPrompt });
+      const { reply, action } = parseAIResponse(raw);
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
+      if (action) onAction(action);
     } catch {
       setMessages((m) => [...m, { role: "assistant", content: t.ai.errorMessage }]);
     } finally {
